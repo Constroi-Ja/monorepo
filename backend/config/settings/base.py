@@ -169,3 +169,6 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
     "SCHEMA_PATH_PREFIX": "/api/",
 }
+
+# Frontend URL for email links
+FRONTEND_URL = "http://localhost:3000"

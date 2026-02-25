@@ -79,5 +79,8 @@ EMAIL_USE_TLS = False
 EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = "noreply@constroija.com"
 
+# Frontend URL for email links
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 # JWT Settings - Use SECRET_KEY for signing
 SIMPLE_JWT["SIGNING_KEY"] = SECRET_KEY
