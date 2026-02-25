@@ -1,0 +1,41 @@
+# Development Dockerfile for Next.js
+FROM node:20-alpine
+
+LABEL org.opencontainers.image.authors="João Eduardo Braga <joaoeduardobraga2@gmail.com>"
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies and update npm
+RUN apk add --no-cache libc6-compat && \
+    npm install -g npm@latest
+
+# Copy package files
+COPY package.json ./
+
+# Install dependencies (regenerate lock file if needed)
+# Warnings about deprecated packages are normal and can be ignored
+# They come from transitive dependencies and don't affect functionality
+RUN if [ -f package-lock.json ]; then \
+      npm ci --prefer-offline --no-audit --no-fund || \
+      npm install --prefer-offline --no-audit --no-fund; \
+    else \
+      npm install --prefer-offline --no-audit --no-fund; \
+    fi
+
+# Copy project files
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+
+# Run development server
+CMD ["npm", "run", "dev"]
