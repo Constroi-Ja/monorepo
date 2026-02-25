@@ -12,6 +12,7 @@ import { InfoBox } from "@/components/ui/InfoBox";
 import { useMultiStepForm } from "@/hooks/useMultiStepForm";
 import { formatCEP, formatCPF, formatPhone, formatDate, validateCEP, validateCPF } from "@/utils/formatters";
 import { useCEP } from "@/hooks/useCEP";
+import { apiClient } from "@/lib/api-client";
 
 interface ConsumerFormData {
   // Step 1
@@ -21,7 +22,9 @@ interface ConsumerFormData {
   confirmPassword: string;
   // Step 2
   cep: string;
+  street: string;
   number: string;
+  complement: string;
   city: string;
   state: string;
   // Step 3
@@ -37,7 +40,9 @@ const initialData: ConsumerFormData = {
   password: "",
   confirmPassword: "",
   cep: "",
+  street: "",
   number: "",
+  complement: "",
   city: "",
   state: "",
   cpf: "",
@@ -218,6 +223,7 @@ function Step2({ data, updateData, errors, setErrors }: {
       const cepData = await fetchCEP(formatted);
       if (cepData) {
         updateData({
+          street: cepData.logradouro || "",
           city: cepData.localidade,
           state: cepData.uf,
         });
@@ -255,6 +261,32 @@ function Step2({ data, updateData, errors, setErrors }: {
           error={errors.number}
         />
       </div>
+      <Input
+        label="Rua"
+        placeholder="Nome da rua"
+        value={data.street}
+        onChange={(e) => {
+          updateData({ street: e.target.value });
+          if (errors.street) setErrors({ ...errors, street: "" });
+        }}
+        error={errors.street}
+        icon={
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        }
+      />
+      <Input
+        label="Complemento"
+        placeholder="Apto, Bloco, etc. (opcional)"
+        value={data.complement}
+        onChange={(e) => {
+          updateData({ complement: e.target.value });
+          if (errors.complement) setErrors({ ...errors, complement: "" });
+        }}
+        error={errors.complement}
+      />
       <Input
         label="Cidade"
         placeholder="Sua cidade"
@@ -398,6 +430,10 @@ export default function ConsumerRegisterPage() {
       newErrors.cep = "CEP inválido";
     }
     
+    if (!formData.street.trim()) {
+      newErrors.street = "Rua é obrigatória";
+    }
+    
     if (!formData.number.trim()) {
       newErrors.number = "Número é obrigatório";
     }
@@ -473,12 +509,41 @@ export default function ConsumerRegisterPage() {
 
     setLoading(true);
     try {
-      // TODO: Implementar chamada à API
-      console.log("Form data:", formData);
-      // await register(formData);
-      router.push("/dashboard");
+      // Converter data de nascimento de DD/MM/YYYY para YYYY-MM-DD
+      const [day, month, year] = formData.birthDate.split("/");
+      const birthDateFormatted = `${year}-${month}-${day}`;
+
+      // Preparar dados para a API
+      const registrationData = {
+        email: formData.email,
+        password: formData.password,
+        confirm_password: formData.confirmPassword,
+        full_name: formData.fullName,
+        cep: formData.cep.replace(/\D/g, ""),
+        street: formData.street,
+        number: formData.number,
+        complement: formData.complement || null,
+        city: formData.city,
+        state: formData.state,
+        cpf: formData.cpf.replace(/\D/g, ""),
+        gender: formData.gender,
+        phone: formData.phone.replace(/\D/g, ""),
+        birth_date: birthDateFormatted,
+      };
+
+      const response = await apiClient.post("/auth/register/consumer/", registrationData);
+
+      if (response.error) {
+        const errorMessage = response.error.message || "Erro ao realizar cadastro. Tente novamente.";
+        setErrors({ submit: errorMessage });
+        return;
+      }
+
+      // Sucesso - redirecionar para página de confirmação de email
+      router.push("/register/success?email=" + encodeURIComponent(formData.email));
     } catch (error) {
       console.error("Registration error:", error);
+      setErrors({ submit: "Erro ao realizar cadastro. Tente novamente." });
     } finally {
       setLoading(false);
     }
@@ -502,6 +567,13 @@ export default function ConsumerRegisterPage() {
           {/* Form Step */}
           <div className="mb-6">{step}</div>
 
+          {/* Error Message */}
+          {errors.submit && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+              {errors.submit}
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex gap-4">
             {!isFirstStep && (
@@ -518,7 +590,15 @@ export default function ConsumerRegisterPage() {
               disabled={loading}
               className={isFirstStep ? "w-full" : "flex-1"}
             >
-              {isLastStep ? (
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {isLastStep ? "Criando conta..." : "Carregando..."}
+                </>
+              ) : isLastStep ? (
                 "Criar Conta"
               ) : (
                 <>

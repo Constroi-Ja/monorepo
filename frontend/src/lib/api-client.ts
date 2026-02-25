@@ -126,7 +126,7 @@ class ApiClient {
 
   private handleError(error: unknown): ApiResponse {
     if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError<{ detail?: string; [key: string]: any }>;
+      const axiosError = error as AxiosError<{ detail?: string; error?: string; [key: string]: any }>;
       const response = axiosError.response;
 
       if (response) {
@@ -137,6 +137,15 @@ class ApiClient {
           return {
             error: {
               message: errorData.detail,
+            },
+          };
+        }
+
+        // Handle error field (from custom serializers)
+        if (errorData.error) {
+          return {
+            error: {
+              message: errorData.error,
             },
           };
         }
@@ -154,13 +163,31 @@ class ApiClient {
           });
 
           if (Object.keys(errors).length > 0) {
+            // Get first error message for display
+            const firstErrorKey = Object.keys(errors)[0];
+            const firstErrorMessage = Array.isArray(errors[firstErrorKey]) 
+              ? errors[firstErrorKey][0] 
+              : errors[firstErrorKey];
+            
             return {
               error: {
-                message: "Validation error",
+                message: firstErrorMessage || "Validation error",
                 errors,
               },
             };
           }
+        }
+
+        // Handle non_field_errors
+        if (errorData.non_field_errors) {
+          const nonFieldErrors = Array.isArray(errorData.non_field_errors) 
+            ? errorData.non_field_errors[0] 
+            : errorData.non_field_errors;
+          return {
+            error: {
+              message: nonFieldErrors,
+            },
+          };
         }
 
         return {

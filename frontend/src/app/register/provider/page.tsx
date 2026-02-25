@@ -14,6 +14,7 @@ import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useMultiStepForm } from "@/hooks/useMultiStepForm";
 import { formatCEP, formatCPF, formatCNPJ, formatPhone, formatDate, validateCEP, validateCPF, validateCNPJ } from "@/utils/formatters";
 import { useCEP } from "@/hooks/useCEP";
+import { apiClient } from "@/lib/api-client";
 
 interface ProviderFormData {
   // Step 1
@@ -25,7 +26,9 @@ interface ProviderFormData {
   confirmPassword: string;
   // Step 2
   cep: string;
+  street: string;
   number: string;
+  complement: string;
   city: string;
   state: string;
   // Step 3
@@ -44,7 +47,9 @@ const initialData: ProviderFormData = {
   password: "",
   confirmPassword: "",
   cep: "",
+  street: "",
   number: "",
+  complement: "",
   city: "",
   state: "",
   cpf: "",
@@ -264,6 +269,7 @@ function Step2({ data, updateData, errors, setErrors }: {
       const cepData = await fetchCEP(formatted);
       if (cepData) {
         updateData({
+          street: cepData.logradouro || "",
           city: cepData.localidade,
           state: cepData.uf,
         });
@@ -312,6 +318,32 @@ function Step2({ data, updateData, errors, setErrors }: {
           error={errors.number}
         />
       </div>
+      <Input
+        label="Rua"
+        placeholder="Nome da rua"
+        value={data.street}
+        onChange={(e) => {
+          updateData({ street: e.target.value });
+          if (errors.street) setErrors({ ...errors, street: "" });
+        }}
+        error={errors.street}
+        icon={
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        }
+      />
+      <Input
+        label="Complemento"
+        placeholder="Apto, Bloco, etc. (opcional)"
+        value={data.complement}
+        onChange={(e) => {
+          updateData({ complement: e.target.value });
+          if (errors.complement) setErrors({ ...errors, complement: "" });
+        }}
+        error={errors.complement}
+      />
       <Input
         label="Cidade"
         placeholder="Sua cidade"
@@ -371,7 +403,7 @@ function Step3({ data, updateData }: { data: ProviderFormData; updateData: (upda
         label="Celular"
         placeholder="(00) 00000-0000"
         value={data.phone}
-        onChange={(e) => updateData({ phone: e.target.value })}
+        onChange={(e) => updateData({ phone: formatPhone(e.target.value) })}
         icon={
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -380,9 +412,9 @@ function Step3({ data, updateData }: { data: ProviderFormData; updateData: (upda
       />
       <Input
         label="Data de Nascimento"
-        type="date"
+        placeholder="DD/MM/AAAA"
         value={data.birthDate}
-        onChange={(e) => updateData({ birthDate: e.target.value })}
+        onChange={(e) => updateData({ birthDate: formatDate(e.target.value) })}
         icon={
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -447,6 +479,10 @@ export default function ProviderRegisterPage() {
       newErrors.cep = "CEP é obrigatório";
     } else if (!validateCEP(formData.cep)) {
       newErrors.cep = "CEP inválido";
+    }
+    
+    if (!formData.street.trim()) {
+      newErrors.street = "Rua é obrigatória";
     }
     
     if (!formData.number.trim()) {
@@ -527,10 +563,53 @@ export default function ProviderRegisterPage() {
 
     setLoading(true);
     try {
-      console.log("Form data:", formData);
-      router.push("/dashboard");
+      // Converter data de nascimento de DD/MM/YYYY para YYYY-MM-DD
+      const [day, month, year] = formData.birthDate.split("/");
+      const birthDateFormatted = `${year}-${month}-${day}`;
+
+      // Preparar FormData para envio de arquivo
+      const formDataToSend = new FormData();
+      formDataToSend.append("email", formData.email);
+      formDataToSend.append("password", formData.password);
+      formDataToSend.append("confirm_password", formData.confirmPassword);
+      formDataToSend.append("full_name", formData.fullName);
+      formDataToSend.append("specialties", JSON.stringify(formData.specialties));
+      if (formData.criminalRecord) {
+        formDataToSend.append("criminal_record", formData.criminalRecord);
+      }
+      formDataToSend.append("cep", formData.cep.replace(/\D/g, ""));
+      formDataToSend.append("street", formData.street);
+      formDataToSend.append("number", formData.number);
+      if (formData.complement) {
+        formDataToSend.append("complement", formData.complement);
+      }
+      formDataToSend.append("city", formData.city);
+      formDataToSend.append("state", formData.state);
+      formDataToSend.append("cpf", formData.cpf.replace(/\D/g, ""));
+      if (formData.cnpj) {
+        formDataToSend.append("cnpj", formData.cnpj.replace(/\D/g, ""));
+      }
+      formDataToSend.append("gender", formData.gender);
+      formDataToSend.append("phone", formData.phone.replace(/\D/g, ""));
+      formDataToSend.append("birth_date", birthDateFormatted);
+
+      const response = await apiClient.post("/auth/register/provider/", formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.error) {
+        const errorMessage = response.error.message || "Erro ao realizar cadastro. Tente novamente.";
+        setErrors({ submit: errorMessage });
+        return;
+      }
+
+      // Sucesso - redirecionar para página de confirmação de email
+      router.push("/register/success?email=" + encodeURIComponent(formData.email));
     } catch (error) {
       console.error("Registration error:", error);
+      setErrors({ submit: "Erro ao realizar cadastro. Tente novamente." });
     } finally {
       setLoading(false);
     }
@@ -554,6 +633,13 @@ export default function ProviderRegisterPage() {
           {/* Form Step */}
           <div className="mb-6">{step}</div>
 
+          {/* Error Message */}
+          {errors.submit && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+              {errors.submit}
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex gap-4">
             {!isFirstStep && (
@@ -570,7 +656,15 @@ export default function ProviderRegisterPage() {
               disabled={loading}
               className={isFirstStep ? "w-full" : "flex-1"}
             >
-              {isLastStep ? (
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {isLastStep ? "Criando conta..." : "Carregando..."}
+                </>
+              ) : isLastStep ? (
                 "Criar Conta"
               ) : (
                 <>

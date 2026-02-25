@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export default function DashboardPage() {
+export default function SettingsPage() {
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -15,13 +15,13 @@ export default function DashboardPage() {
     }
 
     if (!loading && user) {
-      // Redirect to specific dashboard based on user type
+      // Redirect to specific settings based on user type
       if (user.user_type === "consumer") {
-        router.push("/dashboard/consumer");
+        router.push("/settings/consumer");
       } else if (user.user_type === "provider") {
-        router.push("/dashboard/provider");
+        router.push("/settings/provider");
       } else if (user.user_type === "company") {
-        router.push("/dashboard/company");
+        router.push("/settings/company");
       }
     }
   }, [loading, isAuthenticated, user, router]);

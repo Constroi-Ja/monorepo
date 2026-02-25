@@ -10,7 +10,8 @@ export function middleware(request: NextRequest) {
   const isPublicRoute = 
     publicRoutes.includes(pathname) || 
     pathname.startsWith("/register/") ||
-    pathname.startsWith("/forgot-password");
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/confirm-email");
 
   // If user is not authenticated and trying to access protected route
   if (!token && !isPublicRoute) {
@@ -19,8 +20,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // If user is authenticated and trying to access auth pages
-  if (token && (pathname === "/login" || pathname === "/register" || pathname.startsWith("/register/"))) {
+  // If user is authenticated and trying to access auth pages (except confirm-email and success pages)
+  if (token && (pathname === "/login" || pathname === "/register" || (pathname.startsWith("/register/") && !pathname.startsWith("/register/success")))) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
