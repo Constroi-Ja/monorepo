@@ -1,0 +1,13 @@
+# Django
+Django>=4.2.0,<5.0.0
+
+# Para desenvolvimento
+# django-debug-toolbar>=4.2.0
+
+# Para API REST (opcional)
+# djangorestframework>=3.14.0
+# django-cors-headers>=4.3.0
+
+# Banco de dados (escolha um)
+# psycopg2-binary>=2.9.0  # PostgreSQL
+# mysqlclient>=2.1.0      # MySQL
