@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
 import { apiClient } from "@/lib/api-client";
 import type { Store, Provider } from "@/types";
@@ -72,13 +74,7 @@ export default function ConsumerDashboardPage() {
     }
   };
 
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50">
-        <div className="text-lg">Carregando...</div>
-      </div>
-    );
-  }
+  if (authLoading || loading) return <LoadingScreen />;
 
   if (!user || user.user_type !== "consumer") {
     return null;
@@ -87,14 +83,16 @@ export default function ConsumerDashboardPage() {
   const userName = user.consumer_profile?.full_name || user.first_name || user.username;
 
   return (
-    <div className="flex min-h-screen bg-orange-50">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
 
-      <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0">
+      <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
+          <Breadcrumb items={[{ label: "Painel" }]} />
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Olá, {userName}</h1>
+            <p className="text-sm text-gray-500 mt-1 mb-5">O que você precisa hoje?</p>
 
             {/* Search Bar */}
             <form onSubmit={handleSearch} className="max-w-2xl">

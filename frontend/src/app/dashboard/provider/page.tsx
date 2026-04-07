@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
 import { apiClient } from "@/lib/api-client";
 import Image from "next/image";
@@ -76,13 +78,7 @@ export default function ProviderDashboardPage() {
     }
   };
 
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50">
-        <div className="text-lg">Carregando...</div>
-      </div>
-    );
-  }
+  if (authLoading || loading) return <LoadingScreen />;
 
   if (!user || user.user_type !== "provider") {
     return null;
@@ -91,14 +87,12 @@ export default function ProviderDashboardPage() {
   const userName = user.provider_profile?.full_name || user.first_name || user.username;
 
   return (
-    <div className="flex min-h-screen bg-orange-50">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
 
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-          </div>
+          <Breadcrumb items={[{ label: "Painel" }]} />
 
           {/* Availability Status Card */}
           <div className="bg-gray-800 rounded-xl p-6 mb-8 flex items-center justify-between">

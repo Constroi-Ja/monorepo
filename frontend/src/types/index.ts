@@ -113,6 +113,17 @@ export interface CartItem {
   total: number;
 }
 
+export interface Deliverer {
+  id: number;
+  name: string;
+  level: "leve" | "medio" | "meio-pesado" | "pesado";
+  level_display: string;
+  phone: string | null;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TechnicalVisitRequest {
   id: number;
   consumer_name: string;

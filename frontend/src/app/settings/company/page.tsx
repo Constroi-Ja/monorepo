@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { apiClient } from "@/lib/api-client";
 import { formatCEP, formatCNPJ, formatPhone } from "@/utils/formatters";
 
@@ -46,6 +47,8 @@ export default function CompanySettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState({
     company_name: "",
     email: "",
@@ -102,6 +105,8 @@ export default function CompanySettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSuccessMessage("");
+    setErrorMessage("");
 
     try {
       const updateData: any = {
@@ -124,7 +129,7 @@ export default function CompanySettingsPage() {
 
       if (formData.password) {
         if (formData.password !== formData.confirm_password) {
-          alert("As senhas não coincidem");
+          setErrorMessage("As senhas não coincidem");
           setLoading(false);
           return;
         }
@@ -138,14 +143,15 @@ export default function CompanySettingsPage() {
       });
 
       if (response.error) {
-        alert(response.error.message || "Erro ao atualizar perfil");
+        setErrorMessage(response.error.message || "Erro ao atualizar perfil");
       } else {
         await refreshUser();
-        alert("Perfil atualizado com sucesso!");
+        setSuccessMessage("Perfil atualizado com sucesso!");
+        setTimeout(() => router.push("/dashboard"), 1500);
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert("Erro ao atualizar perfil");
+      setErrorMessage("Erro ao atualizar perfil");
     } finally {
       setLoading(false);
     }
@@ -162,6 +168,28 @@ export default function CompanySettingsPage() {
   return (
     <div className="min-h-screen bg-orange-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
+        <Breadcrumb
+          items={[
+            { label: "Painel", href: "/dashboard/company" },
+            { label: "Configurações" },
+          ]}
+        />
+        {successMessage && (
+          <div className="mb-4 flex items-center gap-2 bg-green-50 border border-green-300 text-green-800 rounded-lg px-4 py-3">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {successMessage}
+          </div>
+        )}
+        {errorMessage && (
+          <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-300 text-red-800 rounded-lg px-4 py-3">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            {errorMessage}
+          </div>
+        )}
         <div className="mb-6">
           <Link href="/dashboard" className="flex items-center text-gray-600 hover:text-gray-800 mb-2">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
