@@ -30,6 +30,8 @@ urlpatterns = [
     path("api/", include("apps.core.urls")),
     # Authentication
     path("api/auth/", include("apps.authentication.urls")),
+    # Payments
+    path("api/payments/", include("apps.payments.urls")),
 ]
 
 # Serve media files in development

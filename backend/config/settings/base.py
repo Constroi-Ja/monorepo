@@ -4,19 +4,26 @@ Base settings for ConstroiJa project.
 These settings are shared across all environments.
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Application definition
-DJANGO_APPS = [
+# cloudinary_storage MUST come before django.contrib.staticfiles
+DJANGO_APPS_PRE = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+]
+
+CLOUDINARY_APPS = [
+    "cloudinary_storage",
     "django.contrib.staticfiles",
+    "cloudinary",
 ]
 
 THIRD_PARTY_APPS = [
@@ -30,9 +37,10 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.core",
     "apps.authentication",
+    "apps.payments",
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+INSTALLED_APPS = DJANGO_APPS_PRE + CLOUDINARY_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -172,3 +180,21 @@ SPECTACULAR_SETTINGS = {
 
 # Frontend URL for email links
 FRONTEND_URL = "http://localhost:3000"
+
+# ─── Cloudinary ───────────────────────────────────────────────────────────────
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
+    "API_KEY": os.environ.get("CLOUDINARY_API_KEY", ""),
+    "API_SECRET": os.environ.get("CLOUDINARY_API_SECRET", ""),
+    "SECURE": True,
+    "MEDIA_TAG": "constroija",
+    "PREFIX": "constroija",
+}
+
+# Only activate Cloudinary storage when credentials are present
+if os.environ.get("CLOUDINARY_CLOUD_NAME"):
+    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+
+# ─── Mercado Pago ─────────────────────────────────────────────────────────────
+MERCADOPAGO_ACCESS_TOKEN = os.environ.get("MERCADOPAGO_ACCESS_TOKEN", "")
+MERCADOPAGO_PUBLIC_KEY = os.environ.get("MERCADOPAGO_PUBLIC_KEY", "")
