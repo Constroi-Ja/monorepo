@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import CartItem, Item, TechnicalVisitRequest
+from .models import CartItem, Deliverer, Item, TechnicalVisitRequest
 
 User = get_user_model()
 
@@ -117,6 +117,17 @@ class CartItemSerializer(serializers.ModelSerializer):
             cart_item.quantity += quantity
             cart_item.save(update_fields=["quantity", "updated_at"])
         return cart_item
+
+
+class DelivererSerializer(serializers.ModelSerializer):
+    """Serializer for Deliverer model."""
+
+    level_display = serializers.CharField(source="get_level_display", read_only=True)
+
+    class Meta:
+        model = Deliverer
+        fields = ["id", "name", "level", "level_display", "phone", "is_available", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "level_display"]
 
 
 class TechnicalVisitRequestSerializer(serializers.ModelSerializer):

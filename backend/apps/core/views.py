@@ -5,9 +5,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from apps.authentication.models import Company, Provider
-from .models import CartItem, Item, TechnicalVisitRequest
+from .models import CartItem, Deliverer, Item, TechnicalVisitRequest
 from .serializers import (
     CartItemSerializer,
+    DelivererSerializer,
     ItemCreateSerializer,
     ItemSerializer,
     ItemUpdateSerializer,
@@ -251,6 +252,37 @@ class CartItemDetailView(generics.RetrieveUpdateDestroyAPIView):
         return CartItem.objects.filter(user=self.request.user).select_related(
             "item", "item__company", "item__company__company_profile"
         )
+
+
+class DelivererListCreateView(generics.ListCreateAPIView):
+    """List and create deliverers for authenticated company users."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = DelivererSerializer
+
+    def get_queryset(self):
+        if not hasattr(self.request.user, "company_profile"):
+            return Deliverer.objects.none()
+        return Deliverer.objects.filter(company=self.request.user)
+
+    def perform_create(self, serializer):
+        if not hasattr(self.request.user, "company_profile"):
+            raise serializers.ValidationError(
+                {"error": "Apenas empresas podem cadastrar entregadores."}
+            )
+        serializer.save(company=self.request.user)
+
+
+class DelivererDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update or delete a deliverer."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = DelivererSerializer
+
+    def get_queryset(self):
+        if not hasattr(self.request.user, "company_profile"):
+            return Deliverer.objects.none()
+        return Deliverer.objects.filter(company=self.request.user)
 
 
 @api_view(["POST"])

@@ -64,6 +64,45 @@ class CartItem(models.Model):
         return f"{self.user.email} - {self.item.name} ({self.quantity})"
 
 
+class Deliverer(models.Model):
+    """Deliverer/courier registered by a company."""
+
+    LEVEL_CHOICES = [
+        ("leve", "Leve"),
+        ("medio", "Médio"),
+        ("meio-pesado", "Meio-Pesado"),
+        ("pesado", "Pesado"),
+    ]
+
+    company = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="deliverers",
+        limit_choices_to={"user_type": "company"},
+    )
+    name = models.CharField(max_length=255, verbose_name="Nome")
+    level = models.CharField(
+        max_length=20,
+        choices=LEVEL_CHOICES,
+        default="medio",
+        verbose_name="Nível",
+    )
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="Telefone")
+    is_available = models.BooleanField(default=True, verbose_name="Disponível")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "deliverers"
+        verbose_name = "Entregador"
+        verbose_name_plural = "Entregadores"
+        ordering = ["name"]
+
+    def __str__(self):
+        company_name = self.company.company_profile.company_name if hasattr(self.company, "company_profile") else self.company.email
+        return f"{self.name} - {company_name}"
+
+
 class TechnicalVisitRequest(models.Model):
     """Technical visit request from consumers to providers."""
 
