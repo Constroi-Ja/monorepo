@@ -59,7 +59,7 @@ export default function CompanyItemsPage() {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get<Item[]>("/api/items/");
+      const response = await apiClient.get<Item[]>("/items/");
       if (response.data) {
         setItems(response.data);
       }
@@ -76,7 +76,7 @@ export default function CompanyItemsPage() {
     }
 
     try {
-      await apiClient.delete(`/api/items/${id}/`);
+      await apiClient.delete(`/items/${id}/`);
       fetchItems();
     } catch (error) {
       console.error("Error deleting item:", error);
@@ -296,14 +296,14 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
 
       if (item) {
         // Update
-        await apiClient.patch(`/api/items/${item.id}/`, formDataToSend, {
+        await apiClient.patch(`/items/${item.id}/`, formDataToSend, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
         });
       } else {
         // Create
-        await apiClient.post("/api/items/", formDataToSend, {
+        await apiClient.post("/items/", formDataToSend, {
           headers: {
             "Content-Type": "multipart/form-data",
           },

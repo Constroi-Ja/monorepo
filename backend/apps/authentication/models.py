@@ -161,6 +161,8 @@ class Provider(models.Model):
     birth_date = models.DateField()
     verified = models.BooleanField(default=False)  # Alterado apenas por banco
     is_available = models.BooleanField(default=False)  # Status de disponibilidade
+    rating_average = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    rating_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -188,6 +190,13 @@ class Company(models.Model):
     cnpj = models.CharField(max_length=18, unique=True)
     segment = models.CharField(max_length=255)
     phone = models.CharField(max_length=20)
+    opening_time = models.TimeField(null=True, blank=True)
+    closing_time = models.TimeField(null=True, blank=True)
+    display_radius_km = models.DecimalField(max_digits=5, decimal_places=2, default=20)
+    avg_minutes_per_km = models.DecimalField(max_digits=5, decimal_places=2, default=4)
+    onboarding_completed = models.BooleanField(default=False)
+    rating_average = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    rating_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

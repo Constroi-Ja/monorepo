@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-
-from .models import Item
+from .models import CartItem, Item, TechnicalVisitRequest
 
 User = get_user_model()
 
@@ -69,3 +68,101 @@ class ItemUpdateSerializer(ItemSerializer):
         extra_kwargs = {
             "photo": {"required": False},
         }
+
+
+class PublicItemSerializer(ItemSerializer):
+    """Public item serializer with company details."""
+
+    company_name = serializers.SerializerMethodField()
+    company_id = serializers.IntegerField(source="company.company_profile.id", read_only=True)
+
+    class Meta(ItemSerializer.Meta):
+        fields = ItemSerializer.Meta.fields + ["company_name", "company_id"]
+
+    def get_company_name(self, obj):
+        if hasattr(obj.company, "company_profile"):
+            return obj.company.company_profile.company_name
+        return obj.company.email
+
+
+class CartItemSerializer(serializers.ModelSerializer):
+    """Serializer for cart items."""
+
+    item = PublicItemSerializer(read_only=True)
+    item_id = serializers.PrimaryKeyRelatedField(
+        source="item",
+        queryset=Item.objects.filter(is_for_sale=True),
+        write_only=True,
+    )
+    total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CartItem
+        fields = ["id", "item", "item_id", "quantity", "total", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "total", "item"]
+
+    def get_total(self, obj):
+        return float(obj.item.price) * obj.quantity
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        item = validated_data["item"]
+        quantity = validated_data.get("quantity", 1)
+        cart_item, created = CartItem.objects.get_or_create(
+            user=user,
+            item=item,
+            defaults={"quantity": quantity},
+        )
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save(update_fields=["quantity", "updated_at"])
+        return cart_item
+
+
+class TechnicalVisitRequestSerializer(serializers.ModelSerializer):
+    """Serializer for technical visit requests."""
+
+    consumer_name = serializers.SerializerMethodField(read_only=True)
+    provider_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = TechnicalVisitRequest
+        fields = [
+            "id",
+            "consumer",
+            "provider",
+            "consumer_name",
+            "provider_name",
+            "notes",
+            "preferred_date",
+            "address",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "status",
+            "created_at",
+            "updated_at",
+            "consumer_name",
+            "provider_name",
+            "consumer",
+        ]
+
+    def get_consumer_name(self, obj):
+        if hasattr(obj.consumer, "consumer_profile"):
+            return obj.consumer.consumer_profile.full_name
+        return obj.consumer.email
+
+    def get_provider_name(self, obj):
+        if hasattr(obj.provider, "provider_profile"):
+            return obj.provider.provider_profile.full_name
+        return obj.provider.email
+
+    def validate_provider(self, provider):
+        if provider.user_type != "provider":
+            raise serializers.ValidationError("Prestador inválido.")
+        if not hasattr(provider, "provider_profile") or not provider.provider_profile.is_available:
+            raise serializers.ValidationError("Prestador indisponível no momento.")
+        return provider

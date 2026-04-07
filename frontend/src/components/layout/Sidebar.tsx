@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { Logo } from "@/components/ui/Logo";
 
 interface SidebarProps {
   userName?: string;
@@ -16,6 +15,17 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -29,22 +39,60 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
   };
 
   return (
-    <div className={`${isCollapsed ? "w-16 md:w-16" : "w-64 md:w-64"} bg-gray-800 min-h-screen flex flex-col transition-all duration-300 relative`}>
-      {/* Collapse Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-6 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center z-10 border-2 border-gray-800 transition-all"
-        aria-label={isCollapsed ? "Expandir menu" : "Colapsar menu"}
-      >
-        <svg
-          className={`w-4 h-4 text-white transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+    <>
+      {isMobile && (
+        <button
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+          className="fixed top-4 left-4 z-50 w-10 h-10 bg-gray-800 text-white rounded-lg flex items-center justify-center shadow-lg"
+          aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
+          {isMobileMenuOpen ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
+      )}
+
+      {isMobile && isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <div
+        className={[
+          "bg-gray-800 min-h-screen flex flex-col transition-all duration-300 relative z-40",
+          isMobile
+            ? `fixed top-0 left-0 w-64 transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`
+            : isCollapsed
+              ? "w-16"
+              : "w-64",
+        ].join(" ")}
+      >
+      {/* Collapse Button */}
+      {!isMobile && (
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute right-2 top-6 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center z-10 border border-gray-600 transition-all"
+          aria-label={isCollapsed ? "Expandir menu" : "Colapsar menu"}
+        >
+          <svg
+            className={`w-4 h-4 text-white transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
       {/* Logo */}
       <div className="p-6">
         <div className="flex items-center space-x-2">
@@ -74,6 +122,19 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
 
       {/* Navigation */}
       <div className="flex-1 px-4 py-6">
+        {user?.user_type === "provider" && (
+          <Link
+            href="/dashboard/provider/visits"
+            className={`flex items-center ${isCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors mb-2`}
+            title={isCollapsed ? "Painel de Visitas" : ""}
+          >
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {!isCollapsed && <span>Painel de Visitas</span>}
+          </Link>
+        )}
+
         <Link
           href="/settings"
           className={`flex items-center ${isCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors mb-2`}
@@ -111,6 +172,7 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
           {!isCollapsed && <span>→ Sair</span>}
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

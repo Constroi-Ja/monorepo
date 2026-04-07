@@ -36,11 +36,17 @@ class ApiClient {
         const originalRequest = error.config as InternalAxiosRequestConfig & {
           _retry?: boolean;
         };
+        const requestUrl = originalRequest?.url || "";
+        const isAuthEndpoint =
+          requestUrl.includes("/auth/login/") ||
+          requestUrl.includes("/auth/register/") ||
+          requestUrl.includes("/auth/token/refresh/");
 
         if (
           error.response?.status === 401 &&
           originalRequest &&
-          !originalRequest._retry
+          !originalRequest._retry &&
+          !isAuthEndpoint
         ) {
           originalRequest._retry = true;
 

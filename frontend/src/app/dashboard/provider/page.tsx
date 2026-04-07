@@ -39,7 +39,7 @@ export default function ProviderDashboardPage() {
 
   const fetchFeaturedStores = async () => {
     try {
-      const response = await apiClient.get<Store[]>("/stores/featured/");
+      const response = await apiClient.get<Store[]>("/stores/provider/");
       if (response.data) {
         setFeaturedStores(response.data);
       }
@@ -128,16 +128,24 @@ export default function ProviderDashboardPage() {
           </div>
 
           {/* Buy Material Button */}
-          <div className="mb-12 flex justify-center">
+          <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
             <button
               onClick={() => router.push("/materials")}
-              className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow w-96" // aumentou largura
-              style={{ minWidth: "22rem" }} // fallback para largura em px se Tailwind não bastar
+              className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
             >
               <svg className="w-16 h-16 text-orange-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               <span className="text-xl font-semibold text-gray-800">Comprar Material</span>
+            </button>
+            <button
+              onClick={() => router.push("/dashboard/provider/visits")}
+              className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
+            >
+              <svg className="w-16 h-16 text-orange-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-xl font-semibold text-gray-800">Painel de Visitas</span>
             </button>
           </div>
 
@@ -182,12 +190,18 @@ export default function ProviderDashboardPage() {
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-800 mb-1">{store.company_name}</h3>
                     <p className="text-sm text-gray-600 mb-2">{store.category}</p>
+                    <p className={`text-xs mb-2 ${store.is_open ? "text-green-600" : "text-red-600"}`}>
+                      {store.is_open ? "Aberta agora" : "Fechada no momento"}
+                    </p>
                     <div className="flex items-center text-sm text-gray-500">
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <span>{store.distance} km</span>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-600">
+                      ⭐ {store.rating} ({store.rating_count || 0} avaliações) · ETA médio {store.eta_minutes || "-"} min
                     </div>
                   </div>
                 </div>

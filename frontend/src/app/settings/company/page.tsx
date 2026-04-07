@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -44,6 +44,7 @@ const states = [
 export default function CompanySettingsPage() {
   const { user, loading: authLoading, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     company_name: "",
@@ -59,6 +60,11 @@ export default function CompanySettingsPage() {
     state: "",
     password: "",
     confirm_password: "",
+    opening_time: "",
+    closing_time: "",
+    display_radius_km: "20",
+    avg_minutes_per_km: "4",
+    onboarding_completed: false,
   });
 
   useEffect(() => {
@@ -84,6 +90,11 @@ export default function CompanySettingsPage() {
         state: profile.state || "",
         password: "",
         confirm_password: "",
+        opening_time: profile.opening_time || "",
+        closing_time: profile.closing_time || "",
+        display_radius_km: String(profile.display_radius_km || 20),
+        avg_minutes_per_km: String(profile.avg_minutes_per_km || 4),
+        onboarding_completed: profile.onboarding_completed || false,
       });
     }
   }, [user]);
@@ -104,6 +115,11 @@ export default function CompanySettingsPage() {
         cnpj: formData.cnpj.replace(/\D/g, ""),
         segment: formData.segment,
         phone: formData.phone.replace(/\D/g, ""),
+        opening_time: formData.opening_time || null,
+        closing_time: formData.closing_time || null,
+        display_radius_km: Number(formData.display_radius_km),
+        avg_minutes_per_km: Number(formData.avg_minutes_per_km),
+        onboarding_completed: true,
       };
 
       if (formData.password) {
@@ -154,6 +170,11 @@ export default function CompanySettingsPage() {
             Voltar
           </Link>
           <h1 className="text-3xl font-bold text-gray-800">Configurações</h1>
+          {searchParams.get("onboarding") === "1" && (
+            <p className="mt-2 text-sm text-orange-700 bg-orange-100 inline-block px-3 py-1 rounded-md">
+              Finalize seu cadastro para começar a receber pedidos.
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -209,6 +230,10 @@ export default function CompanySettingsPage() {
               <Input label="Complemento" value={formData.complement} onChange={(e) => setFormData({ ...formData, complement: e.target.value })} />
               <Input label="Cidade" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
               <Select label="Estado" options={states} value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} />
+              <Input label="Horário de abertura" type="time" value={formData.opening_time} onChange={(e) => setFormData({ ...formData, opening_time: e.target.value })} />
+              <Input label="Horário de fechamento" type="time" value={formData.closing_time} onChange={(e) => setFormData({ ...formData, closing_time: e.target.value })} />
+              <Input label="Distância de exibição (km)" type="number" value={formData.display_radius_km} onChange={(e) => setFormData({ ...formData, display_radius_km: e.target.value })} />
+              <Input label="Tempo médio por km (min)" type="number" value={formData.avg_minutes_per_km} onChange={(e) => setFormData({ ...formData, avg_minutes_per_km: e.target.value })} />
             </div>
           </div>
 

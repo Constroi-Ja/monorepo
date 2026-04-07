@@ -44,6 +44,9 @@ export interface ProviderProfile {
   phone: string;
   birth_date: string;
   verified: boolean;
+  is_available: boolean;
+  rating_average: number;
+  rating_count: number;
 }
 
 export interface CompanyProfile {
@@ -57,6 +60,13 @@ export interface CompanyProfile {
   cnpj: string;
   segment: string;
   phone: string;
+  opening_time?: string | null;
+  closing_time?: string | null;
+  display_radius_km: number;
+  avg_minutes_per_km: number;
+  onboarding_completed: boolean;
+  rating_average: number;
+  rating_count: number;
 }
 
 // Store and Provider Types
@@ -66,6 +76,11 @@ export interface Store {
   category: string;
   distance: number;
   rating: number;
+  rating_count?: number;
+  eta_minutes?: number;
+  is_open?: boolean;
+  opening_time?: string | null;
+  closing_time?: string | null;
   image_url?: string;
 }
 
@@ -75,7 +90,38 @@ export interface Provider {
   specialties: string[];
   distance: number;
   rating: number;
+  rating_count?: number;
+  eta_minutes?: number;
+  is_available?: boolean;
   image_url?: string;
+}
+
+export interface CartItem {
+  id: number;
+  item: {
+    id: number;
+    company_id: number;
+    company_name: string;
+    name: string;
+    description: string;
+    price: string;
+    shipping_type: "leve" | "medio" | "meio-pesado" | "pesado";
+    shipping_type_display: string;
+    photo_url?: string | null;
+  };
+  quantity: number;
+  total: number;
+}
+
+export interface TechnicalVisitRequest {
+  id: number;
+  consumer_name: string;
+  provider_name: string;
+  notes?: string | null;
+  preferred_date?: string | null;
+  address: string;
+  status: "pending" | "accepted" | "refused" | "completed";
+  created_at: string;
 }
 
 // Auth Types

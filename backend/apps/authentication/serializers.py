@@ -48,8 +48,11 @@ class ProviderSerializer(serializers.ModelSerializer):
             "phone",
             "birth_date",
             "verified",
+            "is_available",
+            "rating_average",
+            "rating_count",
         ]
-        read_only_fields = ["verified"]
+        read_only_fields = ["verified", "rating_average", "rating_count"]
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -68,7 +71,15 @@ class CompanySerializer(serializers.ModelSerializer):
             "cnpj",
             "segment",
             "phone",
+            "opening_time",
+            "closing_time",
+            "display_radius_km",
+            "avg_minutes_per_km",
+            "onboarding_completed",
+            "rating_average",
+            "rating_count",
         ]
+        read_only_fields = ["rating_average", "rating_count"]
 
 
 class UserSerializer(serializers.ModelSerializer):

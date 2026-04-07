@@ -24,6 +24,12 @@ export default function CompanyDashboardPage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
+  useEffect(() => {
+    if (user?.user_type === "company" && user.company_profile && !user.company_profile.onboarding_completed) {
+      router.push("/settings/company?onboarding=1");
+    }
+  }, [user, router]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-orange-50">
@@ -121,6 +127,8 @@ export default function CompanyDashboardPage() {
                   if (feature.id === 1) {
                     // Conferir Itens
                     router.push("/dashboard/company/items");
+                  } else if (feature.id === 2) {
+                    router.push("/dashboard/company/deliveries");
                   } else if (feature.premium) {
                     setShowUpgradeModal(true);
                     router.push("/dashboard/company?upgrade=true");

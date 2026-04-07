@@ -90,7 +90,7 @@ export default function ConsumerDashboardPage() {
     <div className="flex min-h-screen bg-orange-50">
       <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
 
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -158,8 +158,17 @@ export default function ConsumerDashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {featuredStores.length === 0 && (
+                <div className="md:col-span-3 bg-white rounded-xl border border-gray-200 p-6 text-gray-600">
+                  Não existem lojas abertas no momento
+                </div>
+              )}
               {featuredStores.map((store) => (
-                <div key={store.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+                <div
+                  key={store.id}
+                  onClick={() => router.push("/materials")}
+                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                >
                   <div className="relative h-48 bg-gray-200">
                     {store.image_url ? (
                       <img src={store.image_url} alt={store.company_name} className="w-full h-full object-cover" />
@@ -180,12 +189,21 @@ export default function ConsumerDashboardPage() {
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-800 mb-1">{store.company_name}</h3>
                     <p className="text-sm text-gray-600 mb-2">{store.category}</p>
+                    <p className={`text-xs mb-2 ${store.is_open ? "text-green-600" : "text-red-600"}`}>
+                      {store.is_open
+                        ? `Aberta agora${store.closing_time ? ` até ${store.closing_time}` : ""}`
+                        : "Fechada no momento"}
+                    </p>
                     <div className="flex items-center text-sm text-gray-500">
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <span>{store.distance} km</span>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-600">
+                      ⭐ {store.rating} ({store.rating_count || 0} avaliações) · Chega em média em{" "}
+                      {store.eta_minutes || "-"} min
                     </div>
                   </div>
                 </div>
@@ -215,8 +233,17 @@ export default function ConsumerDashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {nearbyProviders.length === 0 && (
+                <div className="md:col-span-4 bg-white rounded-xl border border-gray-200 p-6 text-gray-600">
+                  Não existem prestadores disponíveis no momento
+                </div>
+              )}
               {nearbyProviders.map((provider) => (
-                <div key={provider.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+                <div
+                  key={provider.id}
+                  onClick={() => router.push("/providers")}
+                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                >
                   <div className="relative h-48 bg-gray-200">
                     {provider.image_url ? (
                       <img src={provider.image_url} alt={provider.full_name} className="w-full h-full object-cover" />
@@ -243,6 +270,10 @@ export default function ConsumerDashboardPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <span>{provider.distance} km</span>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-600">
+                      ⭐ {provider.rating} ({provider.rating_count || 0} avaliações) · Chega em média em{" "}
+                      {provider.eta_minutes || "-"} min
                     </div>
                   </div>
                 </div>
