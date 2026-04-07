@@ -46,6 +46,13 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-constroija_password}
       - EMAIL_HOST=mailhog
       - EMAIL_PORT=1025
+      # Cloudinary (set in backend/.env)
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      # Mercado Pago (set in backend/.env)
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN:-}
+      - MERCADOPAGO_PUBLIC_KEY=${MERCADOPAGO_PUBLIC_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -78,6 +85,7 @@ services:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_MP_PUBLIC_KEY=${MERCADOPAGO_PUBLIC_KEY:-}
     depends_on:
       backend:
         condition: service_healthy

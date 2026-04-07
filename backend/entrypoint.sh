@@ -9,8 +9,11 @@ done
 echo "PostgreSQL is ready!"
 
 # Always ensure dependencies are installed (volume mount may have overwritten .venv)
-echo "Ensuring dependencies are installed..."
+echo "Updating lock file..."
 cd /app
+uv lock
+
+echo "Ensuring dependencies are installed..."
 uv sync --extra api --extra postgres --group dev
 
 # Verify rest_framework is installed
