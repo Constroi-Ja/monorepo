@@ -301,7 +301,6 @@ export default function ConsumerSettingsPage() {
               <Input
                 label="Nova Senha"
                 type="password"
-                value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
