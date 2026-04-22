@@ -115,6 +115,15 @@ function getNavItems(userType: string | null | undefined): NavItem[] {
       { href: "/settings", label: "Configurações", icon: <SettingsIcon /> },
     ];
   }
+  if (userType === "admin") {
+    return [
+      { href: "/dashboard/admin", label: "Visão Geral", icon: <HomeIcon /> },
+      { href: "/dashboard/admin/users", label: "Usuários", icon: <UsersIcon /> },
+      { href: "/dashboard/admin/providers", label: "Prestadores", icon: <StarIcon /> },
+      { href: "/dashboard/admin/stores", label: "Lojas", icon: <PackageIcon /> },
+      { href: "/dashboard/admin/reviews", label: "Avaliações", icon: <CalendarIcon /> },
+    ];
+  }
   return [
     { href: "/dashboard", label: "Painel", icon: <HomeIcon /> },
     { href: "/settings", label: "Configurações", icon: <SettingsIcon /> },
@@ -150,6 +159,7 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === `/dashboard/${user?.user_type}`;
+    if (href === "/dashboard/admin") return pathname === "/dashboard/admin";
     return pathname.startsWith(href);
   };
 
@@ -267,20 +277,22 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
           ))}
 
           {/* Upgrade button */}
-          <div className="mt-2 pt-2 border-t border-gray-800">
-            <Link
-              href="/settings?tab=plan"
-              className={[
-                "flex items-center px-3 py-2.5 rounded-lg transition-all mb-1",
-                isCollapsed ? "justify-center" : "gap-3",
-                "text-orange-400 hover:bg-orange-500/10 border border-orange-500/20 hover:border-orange-500/40",
-              ].join(" ")}
-              title={isCollapsed ? "Atualizar Plano" : undefined}
-            >
-              <StarIcon />
-              {!isCollapsed && <span className="text-sm font-medium">Atualizar Plano</span>}
-            </Link>
-          </div>
+          {user?.user_type !== "admin" && (
+            <div className="mt-2 pt-2 border-t border-gray-800">
+              <Link
+                href="/settings?tab=plan"
+                className={[
+                  "flex items-center px-3 py-2.5 rounded-lg transition-all mb-1",
+                  isCollapsed ? "justify-center" : "gap-3",
+                  "text-orange-400 hover:bg-orange-500/10 border border-orange-500/20 hover:border-orange-500/40",
+                ].join(" ")}
+                title={isCollapsed ? "Atualizar Plano" : undefined}
+              >
+                <StarIcon />
+                {!isCollapsed && <span className="text-sm font-medium">Atualizar Plano</span>}
+              </Link>
+            </div>
+          )}
         </nav>
 
         {/* Logout */}

@@ -18,6 +18,7 @@ class User(AbstractUser):
         ("consumer", "Consumidor"),
         ("provider", "Prestador"),
         ("company", "Empresa"),
+        ("admin", "Administrador"),
     ]
 
     email = models.EmailField(unique=True, db_index=True)
@@ -26,6 +27,7 @@ class User(AbstractUser):
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    profile_photo = models.ImageField(upload_to="profile_photos/", null=True, blank=True, verbose_name="Foto de Perfil")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
@@ -161,6 +163,7 @@ class Provider(models.Model):
     birth_date = models.DateField()
     verified = models.BooleanField(default=False)  # Alterado apenas por banco
     is_available = models.BooleanField(default=False)  # Status de disponibilidade
+    coverage_radius_km = models.DecimalField(max_digits=5, decimal_places=2, default=50, verbose_name="Raio de Atendimento (km)")
     rating_average = models.DecimalField(max_digits=3, decimal_places=2, default=0)
     rating_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -190,6 +193,7 @@ class Company(models.Model):
     cnpj = models.CharField(max_length=18, unique=True)
     segment = models.CharField(max_length=255)
     phone = models.CharField(max_length=20)
+    logo = models.ImageField(upload_to="company_logos/", null=True, blank=True, verbose_name="Logo")
     opening_time = models.TimeField(null=True, blank=True)
     closing_time = models.TimeField(null=True, blank=True)
     display_radius_km = models.DecimalField(max_digits=5, decimal_places=2, default=20)

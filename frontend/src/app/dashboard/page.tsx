@@ -22,6 +22,8 @@ export default function DashboardPage() {
         router.push("/dashboard/provider");
       } else if (user.user_type === "company") {
         router.push("/dashboard/company");
+      } else if (user.user_type === "admin") {
+        router.push("/dashboard/admin");
       }
     }
   }, [loading, isAuthenticated, user, router]);

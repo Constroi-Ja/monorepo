@@ -15,6 +15,11 @@ from .views import (
     create_technical_visit,
     provider_visit_panel,
     update_visit_status,
+    create_review,
+    list_reviews,
+    admin_stats,
+    admin_providers_list,
+    admin_stores_list,
 )
 
 app_name = "core"
@@ -35,4 +40,9 @@ urlpatterns = [
     path("technical-visits/", create_technical_visit, name="technical_visit_create"),
     path("technical-visits/provider-panel/", provider_visit_panel, name="technical_visit_provider_panel"),
     path("technical-visits/<int:visit_id>/", update_visit_status, name="technical_visit_update"),
+    path("reviews/", create_review, name="create_review"),
+    path("reviews/list/", list_reviews, name="list_reviews"),
+    path("admin/stats/", admin_stats, name="admin_stats"),
+    path("admin/providers/", admin_providers_list, name="admin_providers_list"),
+    path("admin/stores/", admin_stores_list, name="admin_stores_list"),
 ]

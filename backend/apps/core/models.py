@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.contrib.auth import get_user_model
 
@@ -101,6 +102,49 @@ class Deliverer(models.Model):
     def __str__(self):
         company_name = self.company.company_profile.company_name if hasattr(self.company, "company_profile") else self.company.email
         return f"{self.name} - {company_name}"
+
+
+class Review(models.Model):
+    """Review/rating for providers and companies."""
+
+    class TargetType(models.TextChoices):
+        PROVIDER = "provider", "Prestador"
+        COMPANY = "company", "Empresa"
+
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reviews_given",
+        verbose_name="Avaliador",
+    )
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reviews_received",
+        verbose_name="Avaliado",
+    )
+    target_type = models.CharField(
+        max_length=10,
+        choices=TargetType.choices,
+        verbose_name="Tipo do Avaliado",
+    )
+    rating = models.PositiveSmallIntegerField(
+        verbose_name="Nota",
+        help_text="Nota de 1 a 5",
+    )
+    comment = models.TextField(blank=True, verbose_name="Comentário")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "reviews"
+        verbose_name = "Avaliação"
+        verbose_name_plural = "Avaliações"
+        ordering = ["-created_at"]
+        unique_together = [("reviewer", "target_user")]
+
+    def __str__(self):
+        return f"Review by {self.reviewer.email} → {self.target_user.email}: {self.rating}★"
 
 
 class TechnicalVisitRequest(models.Model):

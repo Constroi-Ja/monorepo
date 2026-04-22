@@ -10,6 +10,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import EmailConfirmationToken, PasswordResetToken, Consumer, Provider, Company
 from .serializers import (
+    AdminUserListSerializer,
     CompanyRegistrationSerializer,
     CompanySerializer,
     ConsumerRegistrationSerializer,
@@ -287,6 +288,11 @@ def update_consumer_profile(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
 
+    # Handle profile photo
+    if "profile_photo" in request.FILES:
+        request.user.profile_photo = request.FILES["profile_photo"]
+        request.user.save(update_fields=["profile_photo"])
+
     # Update user email if provided
     if "email" in data:
         request.user.email = data["email"]
@@ -326,9 +332,14 @@ def update_provider_profile(request):
         data["specialties"] = json.loads(data["specialties"])
 
     # Update provider profile
-    serializer = ProviderSerializer(provider, data=data, partial=True)
+    serializer = ProviderSerializer(provider, data=data, partial=True, context={"request": request})
     serializer.is_valid(raise_exception=True)
     serializer.save()
+
+    # Handle profile photo
+    if "profile_photo" in request.FILES:
+        request.user.profile_photo = request.FILES["profile_photo"]
+        request.user.save(update_fields=["profile_photo"])
 
     # Update user email if provided
     if "email" in data:
@@ -367,6 +378,14 @@ def update_company_profile(request):
     serializer = CompanySerializer(company, data=data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
+
+    # Handle logo and profile photo
+    if "logo" in request.FILES:
+        company.logo = request.FILES["logo"]
+        company.save(update_fields=["logo"])
+    if "profile_photo" in request.FILES:
+        request.user.profile_photo = request.FILES["profile_photo"]
+        request.user.save(update_fields=["profile_photo"])
 
     # Update user email if provided
     if "email" in data:
@@ -417,3 +436,52 @@ def update_provider_availability(request):
             {"error": "Perfil de prestador não encontrado."},
             status=status.HTTP_404_NOT_FOUND,
         )
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def admin_user_list(request):
+    """Admin: list all users with filters."""
+    if request.user.user_type != "admin":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    queryset = User.objects.select_related(
+        "consumer_profile", "provider_profile", "company_profile"
+    ).order_by("-date_joined")
+
+    user_type = request.query_params.get("user_type")
+    if user_type:
+        queryset = queryset.filter(user_type=user_type)
+
+    search = request.query_params.get("search")
+    if search:
+        queryset = queryset.filter(
+            email__icontains=search
+        ) | queryset.filter(
+            provider_profile__full_name__icontains=search
+        ) | queryset.filter(
+            consumer_profile__full_name__icontains=search
+        ) | queryset.filter(
+            company_profile__company_name__icontains=search
+        )
+
+    serializer = AdminUserListSerializer(queryset, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def admin_verify_provider(request, provider_id: int):
+    """Admin: verify or unverify a provider."""
+    if request.user.user_type != "admin":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        provider = Provider.objects.get(id=provider_id)
+    except Provider.DoesNotExist:
+        return Response({"error": "Prestador não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    verified = request.data.get("verified", True)
+    provider.verified = verified
+    provider.save(update_fields=["verified"])
+    return Response({"verified": provider.verified})

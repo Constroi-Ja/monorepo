@@ -5,7 +5,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from apps.authentication.models import Company, Provider
-from .models import CartItem, Deliverer, Item, TechnicalVisitRequest
+from django.db.models import Avg
+from .models import CartItem, Deliverer, Item, Review, TechnicalVisitRequest
 from .serializers import (
     CartItemSerializer,
     DelivererSerializer,
@@ -13,6 +14,7 @@ from .serializers import (
     ItemSerializer,
     ItemUpdateSerializer,
     PublicItemSerializer,
+    ReviewSerializer,
     TechnicalVisitRequestSerializer,
 )
 
@@ -159,11 +161,13 @@ def featured_stores(request):
 def nearby_providers(request):
     """Get nearby providers - only available and verified providers."""
     user_cep = request.user.consumer_profile.cep if hasattr(request.user, "consumer_profile") else ""
-    providers = Provider.objects.filter(verified=True, is_available=True)
+    providers = Provider.objects.filter(is_available=True)
 
     provider_list = []
     for provider in providers:
         distance = estimate_distance_km(user_cep, provider.cep)
+        if float(provider.coverage_radius_km or 50) < distance:
+            continue
         eta_minutes = max(5, int(round(distance * 5.0)))
         provider_list.append(
             {
@@ -175,6 +179,8 @@ def nearby_providers(request):
                 "rating_count": provider.rating_count,
                 "eta_minutes": eta_minutes,
                 "is_available": provider.is_available,
+                "verified": provider.verified,
+                "coverage_radius_km": float(provider.coverage_radius_km or 50),
                 "image_url": None,
             }
         )
@@ -355,3 +361,157 @@ def update_visit_status(request, visit_id: int):
     visit.status = status_value
     visit.save(update_fields=["status", "updated_at"])
     return Response(TechnicalVisitRequestSerializer(visit).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_review(request):
+    """Create or update a review for a provider or company."""
+    target_user_id = request.data.get("target_user_id")
+    rating = request.data.get("rating")
+    comment = request.data.get("comment", "")
+    target_type = request.data.get("target_type")  # "provider" or "company"
+
+    if not all([target_user_id, rating, target_type]):
+        return Response({"error": "target_user_id, rating e target_type são obrigatórios."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        target_user = User.objects.get(id=target_user_id)
+    except User.DoesNotExist:
+        return Response({"error": "Usuário não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    review, created = Review.objects.update_or_create(
+        reviewer=request.user,
+        target_user=target_user,
+        defaults={"rating": rating, "comment": comment, "target_type": target_type},
+    )
+
+    # Update rating average on target
+    if target_type == "provider" and hasattr(target_user, "provider_profile"):
+        provider = target_user.provider_profile
+        reviews = Review.objects.filter(target_user=target_user)
+        provider.rating_average = reviews.aggregate(avg=Avg("rating"))["avg"] or 0
+        provider.rating_count = reviews.count()
+        provider.save(update_fields=["rating_average", "rating_count"])
+    elif target_type == "company" and hasattr(target_user, "company_profile"):
+        company = target_user.company_profile
+        reviews = Review.objects.filter(target_user=target_user)
+        company.rating_average = reviews.aggregate(avg=Avg("rating"))["avg"] or 0
+        company.rating_count = reviews.count()
+        company.save(update_fields=["rating_average", "rating_count"])
+
+    return Response(ReviewSerializer(review).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_reviews(request):
+    """List reviews. Admin sees all; others see reviews for a specific target."""
+    if request.user.user_type == "admin":
+        queryset = Review.objects.select_related(
+            "reviewer", "target_user",
+            "reviewer__consumer_profile", "reviewer__provider_profile",
+            "target_user__provider_profile", "target_user__company_profile",
+        ).order_by("-created_at")
+        target_type = request.query_params.get("target_type")
+        if target_type:
+            queryset = queryset.filter(target_type=target_type)
+    else:
+        target_user_id = request.query_params.get("target_user_id")
+        if not target_user_id:
+            return Response([])
+        queryset = Review.objects.filter(target_user_id=target_user_id).select_related(
+            "reviewer", "reviewer__consumer_profile"
+        )
+
+    return Response(ReviewSerializer(queryset, many=True).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_stats(request):
+    """Admin dashboard stats."""
+    if request.user.user_type != "admin":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    from apps.authentication.models import Consumer, Provider, Company
+
+    return Response({
+        "total_users": User.objects.count(),
+        "consumers": Consumer.objects.count(),
+        "providers": Provider.objects.count(),
+        "companies": Company.objects.count(),
+        "providers_verified": Provider.objects.filter(verified=True).count(),
+        "providers_unverified": Provider.objects.filter(verified=False).count(),
+        "total_items": Item.objects.count(),
+        "total_reviews": Review.objects.count(),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_providers_list(request):
+    """Admin: list providers with criminal record info."""
+    if request.user.user_type != "admin":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    from apps.authentication.models import Provider
+
+    queryset = Provider.objects.select_related("user").order_by("-user__date_joined")
+    verified = request.query_params.get("verified")
+    if verified is not None:
+        queryset = queryset.filter(verified=verified.lower() == "true")
+
+    data = []
+    for p in queryset:
+        data.append({
+            "id": p.id,
+            "user_id": p.user_id,
+            "full_name": p.full_name,
+            "email": p.user.email,
+            "specialties": p.specialties,
+            "verified": p.verified,
+            "is_available": p.is_available,
+            "criminal_record_url": p.criminal_record.url if p.criminal_record else None,
+            "rating_average": float(p.rating_average),
+            "rating_count": p.rating_count,
+            "coverage_radius_km": float(p.coverage_radius_km or 50),
+            "created_at": p.user.date_joined.isoformat(),
+        })
+    return Response(data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_stores_list(request):
+    """Admin: list companies with their products."""
+    if request.user.user_type != "admin":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    from apps.authentication.models import Company
+
+    queryset = Company.objects.select_related("user").order_by("-user__date_joined")
+    search = request.query_params.get("search")
+    if search:
+        queryset = queryset.filter(company_name__icontains=search)
+
+    data = []
+    for c in queryset:
+        items = Item.objects.filter(company=c.user, is_for_sale=True).values("id", "name", "price", "shipping_type")
+        data.append({
+            "id": c.id,
+            "user_id": c.user_id,
+            "company_name": c.company_name,
+            "email": c.user.email,
+            "segment": c.segment,
+            "cnpj": c.cnpj,
+            "city": c.city,
+            "state": c.state,
+            "rating_average": float(c.rating_average),
+            "rating_count": c.rating_count,
+            "logo_url": c.logo.url if c.logo else None,
+            "total_items": len(list(items)),
+            "items": list(items),
+            "created_at": c.user.date_joined.isoformat(),
+        })
+    return Response(data)

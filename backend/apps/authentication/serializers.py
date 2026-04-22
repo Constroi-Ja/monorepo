@@ -30,12 +30,20 @@ class ConsumerSerializer(serializers.ModelSerializer):
 class ProviderSerializer(serializers.ModelSerializer):
     """Provider profile serializer."""
 
+    criminal_record_url = serializers.SerializerMethodField()
+
+    def get_criminal_record_url(self, obj):
+        if obj.criminal_record:
+            return obj.criminal_record.url
+        return None
+
     class Meta:
         model = Provider
         fields = [
             "full_name",
             "specialties",
             "criminal_record",
+            "criminal_record_url",
             "cep",
             "street",
             "number",
@@ -49,10 +57,11 @@ class ProviderSerializer(serializers.ModelSerializer):
             "birth_date",
             "verified",
             "is_available",
+            "coverage_radius_km",
             "rating_average",
             "rating_count",
         ]
-        read_only_fields = ["verified", "rating_average", "rating_count"]
+        read_only_fields = ["verified", "rating_average", "rating_count", "criminal_record_url"]
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -71,6 +80,7 @@ class CompanySerializer(serializers.ModelSerializer):
             "cnpj",
             "segment",
             "phone",
+            "logo",
             "opening_time",
             "closing_time",
             "display_radius_km",
@@ -88,6 +98,12 @@ class UserSerializer(serializers.ModelSerializer):
     consumer_profile = ConsumerSerializer(read_only=True)
     provider_profile = ProviderSerializer(read_only=True)
     company_profile = CompanySerializer(read_only=True)
+    profile_photo_url = serializers.SerializerMethodField()
+
+    def get_profile_photo_url(self, obj):
+        if obj.profile_photo:
+            return obj.profile_photo.url
+        return None
 
     class Meta:
         model = User
@@ -101,6 +117,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "user_type",
             "date_joined",
+            "profile_photo_url",
             "consumer_profile",
             "provider_profile",
             "company_profile",
@@ -286,6 +303,28 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             )
         data["user"] = UserSerializer(self.user).data
         return data
+
+
+class AdminUserListSerializer(serializers.ModelSerializer):
+    """Serializer for admin user listing."""
+
+    consumer_profile = ConsumerSerializer(read_only=True)
+    provider_profile = ProviderSerializer(read_only=True)
+    company_profile = CompanySerializer(read_only=True)
+    profile_photo_url = serializers.SerializerMethodField()
+
+    def get_profile_photo_url(self, obj):
+        if obj.profile_photo:
+            return obj.profile_photo.url
+        return None
+
+    class Meta:
+        model = User
+        fields = [
+            "id", "email", "username", "first_name", "last_name",
+            "user_type", "is_verified", "is_active", "date_joined",
+            "profile_photo_url", "consumer_profile", "provider_profile", "company_profile",
+        ]
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

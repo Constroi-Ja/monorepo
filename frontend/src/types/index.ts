@@ -7,8 +7,9 @@ export interface User {
   last_name: string;
   phone: string | null;
   is_verified: boolean;
-  user_type: "consumer" | "provider" | "company" | null;
+  user_type: "consumer" | "provider" | "company" | "admin" | null;
   date_joined: string;
+  profile_photo_url?: string | null;
   consumer_profile?: ConsumerProfile;
   provider_profile?: ProviderProfile;
   company_profile?: CompanyProfile;
@@ -32,6 +33,7 @@ export interface ProviderProfile {
   full_name: string;
   specialties: string[];
   criminal_record: string | null;
+  criminal_record_url?: string | null;
   cep: string;
   street: string;
   number: string;
@@ -45,6 +47,7 @@ export interface ProviderProfile {
   birth_date: string;
   verified: boolean;
   is_available: boolean;
+  coverage_radius_km?: number;
   rating_average: number;
   rating_count: number;
 }
@@ -65,6 +68,7 @@ export interface CompanyProfile {
   display_radius_km: number;
   avg_minutes_per_km: number;
   onboarding_completed: boolean;
+  logo_url?: string | null;
   rating_average: number;
   rating_count: number;
 }
@@ -93,6 +97,7 @@ export interface Provider {
   rating_count?: number;
   eta_minutes?: number;
   is_available?: boolean;
+  verified?: boolean;
   image_url?: string;
 }
 
@@ -163,6 +168,16 @@ export interface TokenRefreshResponse {
 
 export interface TokenRefreshRequest {
   refresh: string;
+}
+
+export interface Review {
+  id: number;
+  reviewer_name: string;
+  target_name: string;
+  target_type: "provider" | "company";
+  rating: number;
+  comment: string;
+  created_at: string;
 }
 
 // API Response Types

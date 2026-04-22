@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import CartItem, Deliverer, Item, TechnicalVisitRequest
+from .models import CartItem, Deliverer, Item, Review, TechnicalVisitRequest
 
 User = get_user_model()
 
@@ -128,6 +128,33 @@ class DelivererSerializer(serializers.ModelSerializer):
         model = Deliverer
         fields = ["id", "name", "level", "level_display", "phone", "is_available", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at", "level_display"]
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    reviewer_name = serializers.SerializerMethodField()
+    target_name = serializers.SerializerMethodField()
+
+    def get_reviewer_name(self, obj):
+        if hasattr(obj.reviewer, "consumer_profile"):
+            return obj.reviewer.consumer_profile.full_name
+        if hasattr(obj.reviewer, "provider_profile"):
+            return obj.reviewer.provider_profile.full_name
+        return obj.reviewer.email
+
+    def get_target_name(self, obj):
+        if hasattr(obj.target_user, "provider_profile"):
+            return obj.target_user.provider_profile.full_name
+        if hasattr(obj.target_user, "company_profile"):
+            return obj.target_user.company_profile.company_name
+        return obj.target_user.email
+
+    class Meta:
+        model = Review
+        fields = [
+            "id", "reviewer_name", "target_name", "target_type",
+            "rating", "comment", "created_at",
+        ]
+        read_only_fields = ["id", "reviewer_name", "target_name", "created_at"]
 
 
 class TechnicalVisitRequestSerializer(serializers.ModelSerializer):

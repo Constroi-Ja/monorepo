@@ -16,6 +16,8 @@ from .views import (
     update_company_profile,
     get_provider_availability,
     update_provider_availability,
+    admin_user_list,
+    admin_verify_provider,
 )
 
 app_name = "authentication"
@@ -36,4 +38,6 @@ urlpatterns = [
     path("profile/company/", update_company_profile, name="update_company_profile"),
     path("providers/availability/", get_provider_availability, name="get_provider_availability"),
     path("providers/availability/update/", update_provider_availability, name="update_provider_availability"),
+    path("admin/users/", admin_user_list, name="admin_user_list"),
+    path("admin/providers/<int:provider_id>/verify/", admin_verify_provider, name="admin_verify_provider"),
 ]
