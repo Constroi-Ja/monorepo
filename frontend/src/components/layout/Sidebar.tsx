@@ -102,6 +102,7 @@ function getNavItems(userType: string | null | undefined): NavItem[] {
       { href: "/dashboard", label: "Painel", icon: <HomeIcon /> },
       { href: "/materials", label: "Comprar Material", icon: <ShoppingBagIcon /> },
       { href: "/providers", label: "Prestadores", icon: <UsersIcon /> },
+      { href: "/minhas-visitas", label: "Minhas Visitas", icon: <CalendarIcon /> },
       { href: "/cart", label: "Carrinho", icon: <CartIcon /> },
       { href: "/settings", label: "Configurações", icon: <SettingsIcon /> },
     ];
@@ -207,12 +208,10 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
       {/* Sidebar panel */}
       <aside
         className={[
-          "bg-gray-900 min-h-screen flex flex-col transition-all duration-300 relative z-40",
+          "bg-gray-900 flex flex-col transition-all duration-300 relative z-40",
           isMobile
             ? `fixed top-0 left-0 w-64 h-full shadow-2xl transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`
-            : isCollapsed
-              ? "w-16"
-              : "w-60",
+            : `sticky top-0 h-screen ${isCollapsed ? "w-16" : "w-60"}`,
         ].join(" ")}
       >
         {/* Desktop collapse button */}
@@ -255,8 +254,10 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
-                <p className="text-white text-sm font-medium truncate">{userName || "Usuário"}</p>
-                <p className="text-gray-500 text-xs capitalize">{user?.user_type || ""}</p>
+                <p className="text-white text-sm font-medium truncate">{userName?.split(" ")[0] || "Usuário"}</p>
+                <p className="text-gray-500 text-xs">
+                  {user?.user_type === "consumer" ? "Consumidor" : user?.user_type === "provider" ? "Prestador" : user?.user_type === "company" ? "Empresa" : user?.user_type === "admin" ? "Admin" : ""}
+                </p>
               </div>
             )}
           </div>

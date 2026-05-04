@@ -151,10 +151,17 @@ class TechnicalVisitRequest(models.Model):
     """Technical visit request from consumers to providers."""
 
     STATUS_CHOICES = [
+        ("awaiting_payment", "Aguardando Pagamento"),
         ("pending", "Pendente"),
         ("accepted", "Aceito"),
         ("refused", "Recusado"),
         ("completed", "Concluído"),
+        ("cancelled", "Cancelado"),
+    ]
+
+    CANCELLED_BY_CHOICES = [
+        ("consumer", "Consumidor"),
+        ("provider", "Prestador"),
     ]
 
     consumer = models.ForeignKey(
@@ -169,10 +176,25 @@ class TechnicalVisitRequest(models.Model):
         related_name="technical_visit_assigned",
         limit_choices_to={"user_type": "provider"},
     )
+    payment_order = models.ForeignKey(
+        "payments.PaymentOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="technical_visits",
+    )
     notes = models.TextField(blank=True, null=True)
     preferred_date = models.DateField(blank=True, null=True)
     address = models.CharField(max_length=255)
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="awaiting_payment")
+    estimated_eta_minutes = models.IntegerField(null=True, blank=True)
+    cancelled_by = models.CharField(
+        max_length=10,
+        choices=CANCELLED_BY_CHOICES,
+        null=True,
+        blank=True,
+    )
+    pending_since = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -182,3 +204,27 @@ class TechnicalVisitRequest(models.Model):
 
     def __str__(self):
         return f"Visita #{self.id} - {self.consumer.email} -> {self.provider.email}"
+
+
+class VisitMessage(models.Model):
+    """Chat message exchanged between consumer and provider in a technical visit."""
+
+    visit = models.ForeignKey(
+        TechnicalVisitRequest,
+        on_delete=models.CASCADE,
+        related_name="messages",
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="visit_messages_sent",
+    )
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "visit_messages"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Msg#{self.id} visita#{self.visit_id} de {self.sender.email}"

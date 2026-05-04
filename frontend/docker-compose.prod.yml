@@ -12,6 +12,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8000}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_MP_PUBLIC_KEY=${MERCADOPAGO_PUBLIC_KEY:-}
     networks:
       - constroija_network
     restart: unless-stopped

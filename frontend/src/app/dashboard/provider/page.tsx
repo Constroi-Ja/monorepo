@@ -9,7 +9,7 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
 import { apiClient } from "@/lib/api-client";
 import Image from "next/image";
-import type { Store } from "@/types";
+import type { Store, TechnicalVisitRequest } from "@/types";
 
 export default function ProviderDashboardPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
@@ -17,6 +17,7 @@ export default function ProviderDashboardPage() {
   const searchParams = useSearchParams();
   const [isAvailable, setIsAvailable] = useState(false);
   const [featuredStores, setFeaturedStores] = useState<Store[]>([]);
+  const [pendingVisits, setPendingVisits] = useState<TechnicalVisitRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -36,6 +37,7 @@ export default function ProviderDashboardPage() {
     if (user && user.user_type === "provider") {
       fetchFeaturedStores();
       fetchAvailabilityStatus();
+      fetchPendingVisits();
     }
   }, [user]);
 
@@ -51,6 +53,13 @@ export default function ProviderDashboardPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchPendingVisits = async () => {
+    try {
+      const r = await apiClient.get<Record<string, TechnicalVisitRequest[]>>("/technical-visits/provider-panel/");
+      if (r.data) setPendingVisits(r.data.pending || []);
+    } catch { /* ignore */ }
   };
 
   const fetchAvailabilityStatus = async () => {
@@ -84,11 +93,12 @@ export default function ProviderDashboardPage() {
     return null;
   }
 
-  const userName = user.provider_profile?.full_name || user.first_name || user.username;
+  const fullName = user.provider_profile?.full_name || user.first_name || user.username;
+  const userName = fullName?.split(" ")[0] || fullName || "";
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={fullName} userInitial={fullName?.charAt(0).toUpperCase()} />
 
       <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
@@ -121,26 +131,62 @@ export default function ProviderDashboardPage() {
             </button>
           </div>
 
-          {/* Buy Material Button */}
-          <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+          {/* Quick Actions */}
+          <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => router.push("/materials")}
-              className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
+              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 hover:border-orange-200 transition-all"
             >
-              <svg className="w-16 h-16 text-orange-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <span className="text-xl font-semibold text-gray-800">Comprar Material</span>
+              <span className="text-base font-semibold text-gray-800">Comprar Material</span>
             </button>
             <button
               onClick={() => router.push("/dashboard/provider/visits")}
-              className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
+              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 hover:border-orange-200 transition-all"
             >
-              <svg className="w-16 h-16 text-orange-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span className="text-xl font-semibold text-gray-800">Painel de Visitas</span>
+              <span className="text-base font-semibold text-gray-800">Painel de Visitas</span>
             </button>
+
+            {/* Alertas card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col">
+              <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                Alertas
+              </p>
+              {pendingVisits.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-xs text-gray-400 text-center">Nenhuma solicitação pendente.</p>
+                </div>
+              ) : (
+                <div className="space-y-2 flex-1 overflow-y-auto max-h-32">
+                  {pendingVisits.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => router.push("/dashboard/provider/visits")}
+                      className="w-full text-left p-2.5 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                    >
+                      <p className="text-xs font-semibold text-amber-800 truncate">{v.consumer_name}</p>
+                      <p className="text-xs text-amber-600 mt-0.5">Nova solicitação de visita</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {pendingVisits.length > 0 && (
+                <button
+                  onClick={() => router.push("/dashboard/provider/visits")}
+                  className="mt-2 text-xs text-orange-500 font-medium hover:underline text-right"
+                >
+                  Ver todas →
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Featured Stores */}

@@ -26,6 +26,31 @@ def _clean_cpf(cpf: str) -> str:
     return re.sub(r"[^\d]", "", cpf)
 
 
+def refund_payment(payment_order: PaymentOrder) -> bool:
+    """Cancel or refund a PaymentOrder via Mercado Pago. Returns True on success."""
+    if not payment_order.mp_payment_id:
+        payment_order.status = PaymentOrder.Status.CANCELLED
+        payment_order.save(update_fields=["status", "updated_at"])
+        return True
+    sdk = _mp_sdk()
+    try:
+        if payment_order.status == PaymentOrder.Status.PENDING:
+            result = sdk.payment().update(payment_order.mp_payment_id, {"status": "cancelled"})
+            if result.get("status") in (200, 201):
+                payment_order.status = PaymentOrder.Status.CANCELLED
+                payment_order.save(update_fields=["status", "updated_at"])
+                return True
+        elif payment_order.status == PaymentOrder.Status.APPROVED:
+            result = sdk.refund().create({"payment_id": payment_order.mp_payment_id})
+            if result.get("status") in (200, 201):
+                payment_order.status = PaymentOrder.Status.REFUNDED
+                payment_order.save(update_fields=["status", "updated_at"])
+                return True
+    except Exception as exc:
+        logger.exception("Erro ao reembolsar pagamento %s: %s", payment_order.id, exc)
+    return False
+
+
 class CreatePixPaymentView(APIView):
     """POST /api/payments/pix/  — cria um pagamento PIX e retorna QR Code."""
 
@@ -216,6 +241,16 @@ class PaymentWebhookView(APIView):
                         status=new_status,
                         raw_response=mp_data,
                     )
+
+                    # Activate visit when payment is approved
+                    if new_status == PaymentOrder.Status.APPROVED:
+                        from django.utils import timezone as tz
+                        from apps.core.models import TechnicalVisitRequest
+                        order = PaymentOrder.objects.filter(mp_payment_id=str(resource_id)).first()
+                        if order:
+                            TechnicalVisitRequest.objects.filter(
+                                payment_order=order, status="awaiting_payment"
+                            ).update(status="pending", pending_since=tz.now())
             except Exception as exc:
                 logger.exception("Webhook processing error: %s", exc)
 

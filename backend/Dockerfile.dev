@@ -7,7 +7,9 @@ LABEL org.opencontainers.image.authors="João Eduardo Braga <joaoeduardobraga2@g
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
 # Set work directory
 WORKDIR /app
@@ -23,11 +25,11 @@ RUN apt-get update && apt-get install -y \
 # Install uv
 RUN pip install --no-cache-dir uv
 
-# Copy dependency files
-COPY pyproject.toml README.md ./
+# Copy dependency files first (cache layer)
+COPY pyproject.toml uv.lock README.md ./
 
-# Install dependencies (including dev and api)
-RUN uv sync --extra api --extra postgres --group dev
+# Install ALL dependencies into /opt/venv (outside /app so host volume mount can't shadow it)
+RUN uv sync --frozen --extra api --extra postgres --group dev
 
 # Copy project
 COPY . .
@@ -43,4 +45,4 @@ EXPOSE 8000
 ENTRYPOINT ["/entrypoint.sh"]
 
 # Run development server
-CMD ["uv", "run", "python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

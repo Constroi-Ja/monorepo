@@ -27,12 +27,14 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     container_name: constroija_backend
-    command: uv run python manage.py runserver 0.0.0.0:8000
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./backend:/app
-      - /app/.venv  # Exclude .venv from host mount
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "8000:8000"
     env_file:
@@ -46,13 +48,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-constroija_password}
       - EMAIL_HOST=mailhog
       - EMAIL_PORT=1025
-      # Cloudinary (set in backend/.env)
-      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
-      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
-      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
-      # Mercado Pago (set in backend/.env)
-      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN:-}
-      - MERCADOPAGO_PUBLIC_KEY=${MERCADOPAGO_PUBLIC_KEY:-}
+      # Cloudinary and Mercado Pago come from env_file (backend/.env)
     depends_on:
       db:
         condition: service_healthy

@@ -312,8 +312,8 @@ export default function ProviderSettingsPage() {
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Alterar Senha</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Nova Senha" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-              <Input label="Confirmar Nova Senha" type="password" value={formData.confirm_password} onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })} />
+              <Input label="Nova Senha" type="password" value={formData.password} autoComplete="new-password" onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+              <Input label="Confirmar Nova Senha" type="password" value={formData.confirm_password} autoComplete="new-password" onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })} />
             </div>
             <p className="text-xs text-gray-400 mt-2">Deixe em branco se não deseja alterar a senha.</p>
           </div>

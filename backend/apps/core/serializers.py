@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import CartItem, Deliverer, Item, Review, TechnicalVisitRequest
+from .models import CartItem, Deliverer, Item, Review, TechnicalVisitRequest, VisitMessage
 
 User = get_user_model()
 
@@ -162,6 +162,7 @@ class TechnicalVisitRequestSerializer(serializers.ModelSerializer):
 
     consumer_name = serializers.SerializerMethodField(read_only=True)
     provider_name = serializers.SerializerMethodField(read_only=True)
+    payment_status = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = TechnicalVisitRequest
@@ -175,12 +176,20 @@ class TechnicalVisitRequestSerializer(serializers.ModelSerializer):
             "preferred_date",
             "address",
             "status",
+            "cancelled_by",
+            "estimated_eta_minutes",
+            "payment_status",
+            "pending_since",
             "created_at",
             "updated_at",
         ]
         read_only_fields = [
             "id",
             "status",
+            "cancelled_by",
+            "estimated_eta_minutes",
+            "payment_status",
+            "pending_since",
             "created_at",
             "updated_at",
             "consumer_name",
@@ -198,9 +207,62 @@ class TechnicalVisitRequestSerializer(serializers.ModelSerializer):
             return obj.provider.provider_profile.full_name
         return obj.provider.email
 
+    def get_payment_status(self, obj):
+        if obj.payment_order_id:
+            return obj.payment_order.status
+        return None
+
     def validate_provider(self, provider):
         if provider.user_type != "provider":
             raise serializers.ValidationError("Prestador inválido.")
         if not hasattr(provider, "provider_profile") or not provider.provider_profile.is_available:
             raise serializers.ValidationError("Prestador indisponível no momento.")
         return provider
+
+
+class CreateVisitWithPaymentSerializer(serializers.Serializer):
+    """Validates input for creating a technical visit with integrated payment."""
+
+    provider = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(user_type="provider"))
+    address = serializers.CharField(max_length=255)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    preferred_date = serializers.DateField(required=False, allow_null=True)
+    payment_method = serializers.ChoiceField(choices=["pix", "credit_card"])
+    payer_email = serializers.EmailField()
+    payer_first_name = serializers.CharField(max_length=100)
+    payer_last_name = serializers.CharField(max_length=100)
+    payer_cpf = serializers.CharField(max_length=20)
+    # Card-only fields
+    token = serializers.CharField(required=False, allow_blank=True)
+    installments = serializers.IntegerField(required=False, default=1, min_value=1, max_value=12)
+    payment_method_id = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if attrs.get("payment_method") == "credit_card":
+            if not attrs.get("token"):
+                raise serializers.ValidationError({"token": "Token do cartão é obrigatório."})
+            if not attrs.get("payment_method_id"):
+                raise serializers.ValidationError({"payment_method_id": "Bandeira do cartão é obrigatória."})
+        provider = attrs["provider"]
+        if not hasattr(provider, "provider_profile") or not provider.provider_profile.is_available:
+            raise serializers.ValidationError({"provider": "Prestador indisponível no momento."})
+        return attrs
+
+
+class VisitMessageSerializer(serializers.ModelSerializer):
+    """Serializer for visit chat messages."""
+
+    sender_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = VisitMessage
+        fields = ["id", "sender_name", "content", "created_at"]
+        read_only_fields = ["id", "sender_name", "created_at"]
+
+    def get_sender_name(self, obj):
+        user = obj.sender
+        if hasattr(user, "consumer_profile"):
+            return user.consumer_profile.full_name
+        if hasattr(user, "provider_profile"):
+            return user.provider_profile.full_name
+        return user.email

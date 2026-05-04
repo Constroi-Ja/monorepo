@@ -80,11 +80,12 @@ export default function ConsumerDashboardPage() {
     return null;
   }
 
-  const userName = user.consumer_profile?.full_name || user.first_name || user.username;
+  const fullName = user.consumer_profile?.full_name || user.first_name || user.username;
+  const userName = fullName?.split(" ")[0] || fullName || "";
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={fullName} userInitial={fullName?.charAt(0).toUpperCase()} />
 
       <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
@@ -95,7 +96,7 @@ export default function ConsumerDashboardPage() {
             <p className="text-sm text-gray-500 mt-1 mb-5">O que você precisa hoje?</p>
 
             {/* Search Bar */}
-            <form onSubmit={handleSearch} className="max-w-2xl">
+            <form onSubmit={handleSearch} className="w-full">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,26 +115,36 @@ export default function ConsumerDashboardPage() {
           </div>
 
           {/* Main Categories */}
-          <div className="grid grid-cols-2 gap-8 mb-12 max-w-2xl">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <button
               onClick={() => router.push("/materials")}
-              className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
+              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 hover:border-orange-200 transition-all"
             >
-              <svg className="w-16 h-16 text-orange-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <span className="text-xl font-semibold text-gray-800">Comprar Material</span>
+              <span className="text-base font-semibold text-gray-800">Comprar Material</span>
             </button>
 
             <button
               onClick={() => router.push("/providers")}
-              className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
+              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 hover:border-orange-200 transition-all"
             >
-              <svg className="w-16 h-16 text-orange-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span className="text-xl font-semibold text-gray-800">Contratar Prestador</span>
+              <span className="text-base font-semibold text-gray-800">Contratar Prestador</span>
+            </button>
+
+            <button
+              onClick={() => router.push("/minhas-visitas")}
+              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 hover:border-orange-200 transition-all"
+            >
+              <svg className="w-12 h-12 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-base font-semibold text-gray-800">Minhas Visitas</span>
             </button>
           </div>
 

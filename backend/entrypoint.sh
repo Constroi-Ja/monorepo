@@ -8,28 +8,13 @@ done
 
 echo "PostgreSQL is ready!"
 
-# Always ensure dependencies are installed (volume mount may have overwritten .venv)
-echo "Updating lock file..."
-cd /app
-uv lock
-
-echo "Ensuring dependencies are installed..."
-uv sync --extra api --extra postgres --group dev
-
-# Verify rest_framework is installed
-if ! uv run python -c "import rest_framework" 2>/dev/null; then
-  echo "ERROR: rest_framework not found! Reinstalling dependencies..."
-  rm -rf .venv
-  uv sync --extra api --extra postgres --group dev
-fi
-
 # Run migrations
 echo "Running migrations..."
-uv run python manage.py migrate --noinput
+python manage.py migrate --noinput
 
-# Collect static files (if needed)
+# Collect static files
 echo "Collecting static files..."
-uv run python manage.py collectstatic --noinput || true
+python manage.py collectstatic --noinput || true
 
 # Execute the main command
 exec "$@"

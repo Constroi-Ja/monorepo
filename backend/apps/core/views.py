@@ -1,14 +1,23 @@
+import logging
+import re
+
+import mercadopago
+from django.conf import settings
+from django.db.models import Avg, Q
 from django.utils import timezone
-from rest_framework import status, generics, serializers
+from rest_framework import generics, serializers, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
+
 from apps.authentication.models import Company, Provider
-from django.db.models import Avg
-from .models import CartItem, Deliverer, Item, Review, TechnicalVisitRequest
+from apps.payments.models import PaymentOrder
+
+from .models import CartItem, Deliverer, Item, Review, TechnicalVisitRequest, VisitMessage
 from .serializers import (
     CartItemSerializer,
+    CreateVisitWithPaymentSerializer,
     DelivererSerializer,
     ItemCreateSerializer,
     ItemSerializer,
@@ -16,7 +25,63 @@ from .serializers import (
     PublicItemSerializer,
     ReviewSerializer,
     TechnicalVisitRequestSerializer,
+    VisitMessageSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _mp_sdk() -> mercadopago.SDK:
+    return mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+
+
+def _clean_cpf(cpf: str) -> str:
+    return re.sub(r"[^\d]", "", cpf)
+
+
+def _refund_payment_order(payment_order: PaymentOrder) -> bool:
+    """Cancel or refund a PaymentOrder. Mirrors logic in payments.views.refund_payment."""
+    if not payment_order.mp_payment_id:
+        payment_order.status = PaymentOrder.Status.CANCELLED
+        payment_order.save(update_fields=["status", "updated_at"])
+        return True
+    sdk = _mp_sdk()
+    try:
+        if payment_order.status == PaymentOrder.Status.PENDING:
+            result = sdk.payment().update(payment_order.mp_payment_id, {"status": "cancelled"})
+            if result.get("status") in (200, 201):
+                payment_order.status = PaymentOrder.Status.CANCELLED
+                payment_order.save(update_fields=["status", "updated_at"])
+                return True
+        elif payment_order.status == PaymentOrder.Status.APPROVED:
+            result = sdk.refund().create({"payment_id": payment_order.mp_payment_id})
+            if result.get("status") in (200, 201):
+                payment_order.status = PaymentOrder.Status.REFUNDED
+                payment_order.save(update_fields=["status", "updated_at"])
+                return True
+    except Exception as exc:
+        logger.exception("Erro ao reembolsar pagamento %s: %s", payment_order.id, exc)
+    return False
+
+
+def _cancel_expired_pending_visits() -> None:
+    """Auto-cancel pending visits that exceeded the 20-minute acceptance window."""
+    from datetime import timedelta
+    deadline = timezone.now() - timedelta(minutes=20)
+    expired = (
+        TechnicalVisitRequest.objects.filter(
+            status="pending",
+            pending_since__isnull=False,
+            pending_since__lt=deadline,
+        )
+        .select_related("payment_order")
+    )
+    for visit in expired:
+        if visit.payment_order_id:
+            _refund_payment_order(visit.payment_order)
+        visit.status = "cancelled"
+        visit.cancelled_by = None
+        visit.save(update_fields=["status", "cancelled_by", "updated_at"])
 
 User = get_user_model()
 
@@ -294,17 +359,221 @@ class DelivererDetailView(generics.RetrieveUpdateDestroyAPIView):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_technical_visit(request):
-    """Consumer creates technical visit request for provider."""
+    """Consumer creates a technical visit request integrated with payment."""
     if request.user.user_type != "consumer":
         return Response(
             {"error": "Somente consumidores podem solicitar visita técnica."},
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    serializer = TechnicalVisitRequestSerializer(data=request.data)
+    serializer = CreateVisitWithPaymentSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    serializer.save(consumer=request.user)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
+    data = serializer.validated_data
+
+    consumer_cep = getattr(getattr(request.user, "consumer_profile", None), "cep", "")
+    provider_user = data["provider"]
+    provider_cep = getattr(getattr(provider_user, "provider_profile", None), "cep", "")
+    distance = estimate_distance_km(consumer_cep, provider_cep)
+    eta = max(30, round(distance * 15))
+
+    visit = TechnicalVisitRequest.objects.create(
+        consumer=request.user,
+        provider=provider_user,
+        address=data["address"],
+        notes=data.get("notes") or "",
+        preferred_date=data.get("preferred_date"),
+        status="awaiting_payment",
+        estimated_eta_minutes=eta,
+    )
+
+    sdk = _mp_sdk()
+    payment_method = data["payment_method"]
+    external_ref = f"visit_{visit.id}"
+    amount = 80.00
+    description = "Visita técnica"
+
+    try:
+        if payment_method == "pix":
+            mp_payload = {
+                "transaction_amount": amount,
+                "description": description,
+                "external_reference": external_ref,
+                "payment_method_id": "pix",
+                "payer": {
+                    "email": data["payer_email"],
+                    "first_name": data["payer_first_name"],
+                    "last_name": data["payer_last_name"],
+                    "identification": {"type": "CPF", "number": _clean_cpf(data["payer_cpf"])},
+                },
+            }
+            result = sdk.payment().create(mp_payload)
+            response_data = result.get("response", {})
+            if result.get("status") not in (200, 201):
+                visit.delete()
+                mp_msg = response_data.get("message") or response_data.get("error") or "Erro desconhecido"
+                return Response(
+                    {"error": f"Erro ao criar pagamento PIX: {mp_msg}"},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+            tx = response_data.get("point_of_interaction", {}).get("transaction_data", {})
+            order = PaymentOrder.objects.create(
+                user=request.user,
+                mp_payment_id=str(response_data.get("id", "")),
+                method=PaymentOrder.Method.PIX,
+                status=PaymentOrder.Status.PENDING,
+                amount=amount,
+                description=description,
+                external_reference=external_ref,
+                pix_qr_code=tx.get("qr_code_base64", ""),
+                pix_qr_code_text=tx.get("qr_code", ""),
+                raw_response=response_data,
+            )
+            visit.payment_order = order
+            visit.save(update_fields=["payment_order"])
+            return Response(
+                {
+                    "visit": TechnicalVisitRequestSerializer(visit).data,
+                    "payment": {
+                        "payment_id": order.id,
+                        "method": "pix",
+                        "status": order.status,
+                        "qr_code_base64": order.pix_qr_code,
+                        "qr_code_text": order.pix_qr_code_text,
+                        "amount": str(order.amount),
+                    },
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        # credit_card
+        mp_payload = {
+            "transaction_amount": amount,
+            "token": data["token"],
+            "description": description,
+            "external_reference": external_ref,
+            "installments": data.get("installments", 1),
+            "payment_method_id": data["payment_method_id"],
+            "payer": {
+                "email": data["payer_email"],
+                "identification": {"type": "CPF", "number": _clean_cpf(data["payer_cpf"])},
+            },
+        }
+        result = sdk.payment().create(mp_payload)
+        response_data = result.get("response", {})
+        if result.get("status") not in (200, 201):
+            visit.delete()
+            mp_msg = response_data.get("message") or response_data.get("error") or "Erro desconhecido"
+            return Response(
+                {"error": f"Erro ao processar pagamento: {mp_msg}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        mp_status = response_data.get("status", "pending")
+        order_status = {
+            "approved": PaymentOrder.Status.APPROVED,
+            "rejected": PaymentOrder.Status.REJECTED,
+            "cancelled": PaymentOrder.Status.CANCELLED,
+        }.get(mp_status, PaymentOrder.Status.PENDING)
+        order = PaymentOrder.objects.create(
+            user=request.user,
+            mp_payment_id=str(response_data.get("id", "")),
+            method=PaymentOrder.Method.CREDIT_CARD,
+            status=order_status,
+            amount=amount,
+            description=description,
+            external_reference=external_ref,
+            raw_response=response_data,
+        )
+        visit.payment_order = order
+        update_fields = ["payment_order", "status"]
+        if order_status == PaymentOrder.Status.APPROVED:
+            visit.status = "pending"
+            visit.pending_since = timezone.now()
+            update_fields.append("pending_since")
+        visit.save(update_fields=update_fields)
+        return Response(
+            {
+                "visit": TechnicalVisitRequestSerializer(visit).data,
+                "payment": {
+                    "payment_id": order.id,
+                    "method": "credit_card",
+                    "status": order.status,
+                    "status_detail": response_data.get("status_detail", ""),
+                    "amount": str(order.amount),
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as exc:
+        logger.exception("Erro inesperado ao criar pagamento para visita %s: %s", visit.id, exc)
+        visit.delete()
+        return Response(
+            {"error": "Erro de comunicação com o Mercado Pago. Tente novamente."},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_visits(request):
+    """Consumer lists their own technical visit requests."""
+    if request.user.user_type != "consumer":
+        return Response(
+            {"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN
+        )
+    visits = (
+        TechnicalVisitRequest.objects.filter(consumer=request.user)
+        .select_related("payment_order", "provider", "provider__provider_profile")
+        .order_by("-created_at")
+    )
+    return Response(TechnicalVisitRequestSerializer(visits, many=True).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def visit_detail(request, visit_id: int):
+    """Consumer or provider retrieves a single technical visit."""
+    _cancel_expired_pending_visits()
+    user = request.user
+    visit = (
+        TechnicalVisitRequest.objects.filter(
+            Q(consumer=user) | Q(provider=user), id=visit_id
+        )
+        .select_related("payment_order", "consumer__consumer_profile", "provider__provider_profile")
+        .first()
+    )
+    if not visit:
+        return Response({"error": "Visita não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+    return Response(TechnicalVisitRequestSerializer(visit).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def cancel_visit(request, visit_id: int):
+    """Consumer cancels a visit and triggers refund."""
+    if request.user.user_type != "consumer":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    visit = (
+        TechnicalVisitRequest.objects.filter(id=visit_id, consumer=request.user)
+        .select_related("payment_order")
+        .first()
+    )
+    if not visit:
+        return Response({"error": "Visita não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+    if visit.status not in ("awaiting_payment", "pending", "accepted"):
+        return Response(
+            {"error": "Esta visita não pode ser cancelada."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if visit.payment_order_id:
+        _refund_payment_order(visit.payment_order)
+
+    visit.status = "cancelled"
+    visit.cancelled_by = "consumer"
+    visit.save(update_fields=["status", "cancelled_by", "updated_at"])
+    return Response(TechnicalVisitRequestSerializer(visit).data)
 
 
 @api_view(["GET"])
@@ -317,22 +586,15 @@ def provider_visit_panel(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    _cancel_expired_pending_visits()
+
     visits = TechnicalVisitRequest.objects.filter(provider=request.user).select_related(
-        "consumer", "consumer__consumer_profile"
+        "consumer", "consumer__consumer_profile", "payment_order"
     )
+    groups = ["awaiting_payment", "pending", "accepted", "refused", "completed", "cancelled"]
     data = {
-        "pending": TechnicalVisitRequestSerializer(
-            visits.filter(status="pending"), many=True
-        ).data,
-        "accepted": TechnicalVisitRequestSerializer(
-            visits.filter(status="accepted"), many=True
-        ).data,
-        "refused": TechnicalVisitRequestSerializer(
-            visits.filter(status="refused"), many=True
-        ).data,
-        "completed": TechnicalVisitRequestSerializer(
-            visits.filter(status="completed"), many=True
-        ).data,
+        grp: TechnicalVisitRequestSerializer(visits.filter(status=grp), many=True).data
+        for grp in groups
     }
     return Response(data)
 
@@ -340,27 +602,76 @@ def provider_visit_panel(request):
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def update_visit_status(request, visit_id: int):
-    """Provider updates visit status."""
+    """Provider accepts or refuses a visit. Refunds automatically on refusal."""
     if request.user.user_type != "provider":
         return Response(
             {"error": "Somente prestadores podem atualizar visitas."},
             status=status.HTTP_403_FORBIDDEN,
         )
     status_value = request.data.get("status")
-    allowed = {"accepted", "refused", "completed"}
+    allowed = {"accepted", "refused"}
     if status_value not in allowed:
-        return Response(
-            {"error": "Status inválido."}, status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"error": "Status inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
-    visit = TechnicalVisitRequest.objects.filter(id=visit_id, provider=request.user).first()
+    visit = (
+        TechnicalVisitRequest.objects.filter(id=visit_id, provider=request.user, status="pending")
+        .select_related("payment_order")
+        .first()
+    )
+    if not visit:
+        return Response({"error": "Solicitação não encontrada ou não está pendente."}, status=status.HTTP_404_NOT_FOUND)
+
+    if status_value == "refused" and visit.payment_order_id:
+        _refund_payment_order(visit.payment_order)
+        visit.cancelled_by = "provider"
+
+    visit.status = status_value
+    update_fields = ["status", "updated_at"]
+    if status_value == "refused":
+        update_fields.append("cancelled_by")
+    visit.save(update_fields=update_fields)
+    return Response(TechnicalVisitRequestSerializer(visit).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def complete_visit(request, visit_id: int):
+    """Consumer marks an accepted visit as completed."""
+    if request.user.user_type != "consumer":
+        return Response({"error": "Apenas o consumidor pode encerrar a visita."}, status=status.HTTP_403_FORBIDDEN)
+
+    visit = TechnicalVisitRequest.objects.filter(
+        id=visit_id, consumer=request.user, status="accepted"
+    ).first()
     if not visit:
         return Response(
-            {"error": "Solicitação não encontrada."}, status=status.HTTP_404_NOT_FOUND
+            {"error": "Visita não encontrada ou não pode ser encerrada."},
+            status=status.HTTP_404_NOT_FOUND,
         )
-    visit.status = status_value
+    visit.status = "completed"
     visit.save(update_fields=["status", "updated_at"])
     return Response(TechnicalVisitRequestSerializer(visit).data)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def visit_messages(request, visit_id: int):
+    """List or send chat messages for a technical visit."""
+    user = request.user
+    visit = TechnicalVisitRequest.objects.filter(
+        Q(consumer=user) | Q(provider=user), id=visit_id
+    ).first()
+    if not visit:
+        return Response({"error": "Visita não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        msgs = VisitMessage.objects.filter(visit=visit).select_related("sender")
+        return Response(VisitMessageSerializer(msgs, many=True).data)
+
+    serializer = VisitMessageSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    msg = serializer.save(visit=visit, sender=user)
+    return Response(VisitMessageSerializer(msg).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])

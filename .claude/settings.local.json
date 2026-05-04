@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xxd \"c:\\\\Users\\\\joaoe_ci341tc\\\\Documents\\\\constroija\\\\monorepo\\\\backend\\\\init-db.sh\")",
+      "Bash(xargs file *)",
+      "Bash(xargs grep *)",
+      "Bash(python manage.py makemigrations core)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\joaoe_ci341tc\\Documents\\constroija\\monorepo\\frontend\\src\\app\\visitas"
+    ]
+  }
+}

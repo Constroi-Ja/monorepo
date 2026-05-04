@@ -131,13 +131,40 @@ export interface Deliverer {
 
 export interface TechnicalVisitRequest {
   id: number;
+  consumer: number;
+  provider: number;
   consumer_name: string;
   provider_name: string;
   notes?: string | null;
   preferred_date?: string | null;
   address: string;
-  status: "pending" | "accepted" | "refused" | "completed";
+  status: "awaiting_payment" | "pending" | "accepted" | "refused" | "completed" | "cancelled";
+  cancelled_by?: "consumer" | "provider" | null;
+  payment_status?: "pending" | "approved" | "rejected" | "cancelled" | "refunded" | null;
+  estimated_eta_minutes?: number | null;
+  pending_since?: string | null;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface VisitMessage {
+  id: number;
+  sender_name: string;
+  content: string;
+  created_at: string;
+}
+
+export interface CreateVisitResponse {
+  visit: TechnicalVisitRequest;
+  payment: {
+    payment_id: number;
+    method: "pix" | "credit_card";
+    status: string;
+    qr_code_base64?: string | null;
+    qr_code_text?: string | null;
+    status_detail?: string;
+    amount: string;
+  };
 }
 
 // Auth Types
