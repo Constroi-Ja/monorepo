@@ -25,6 +25,18 @@ from .views import (
     admin_stats,
     admin_providers_list,
     admin_stores_list,
+    create_order,
+    my_orders,
+    company_orders,
+    order_detail,
+    update_order_status,
+    order_messages,
+    order_stats,
+    bills_list_create,
+    bill_detail,
+    inventory_list_create,
+    inventory_detail,
+    store_detail,
 )
 
 app_name = "core"
@@ -55,4 +67,20 @@ urlpatterns = [
     path("admin/stats/", admin_stats, name="admin_stats"),
     path("admin/providers/", admin_providers_list, name="admin_providers_list"),
     path("admin/stores/", admin_stores_list, name="admin_stores_list"),
+    # Orders
+    path("orders/", create_order, name="create_order"),
+    path("orders/my/", my_orders, name="my_orders"),
+    path("orders/company/", company_orders, name="company_orders"),
+    path("orders/stats/", order_stats, name="order_stats"),
+    path("orders/<int:order_id>/", order_detail, name="order_detail"),
+    path("orders/<int:order_id>/status/", update_order_status, name="update_order_status"),
+    path("orders/<int:order_id>/messages/", order_messages, name="order_messages"),
+    # Bills
+    path("bills/", bills_list_create, name="bills_list_create"),
+    path("bills/<int:bill_id>/", bill_detail, name="bill_detail"),
+    # Inventory
+    path("inventory/", inventory_list_create, name="inventory_list_create"),
+    path("inventory/<int:entry_id>/", inventory_detail, name="inventory_detail"),
+    # Store profile
+    path("stores/<int:store_id>/", store_detail, name="store_detail"),
 ]

@@ -86,6 +86,8 @@ class CompanySerializer(serializers.ModelSerializer):
             "display_radius_km",
             "avg_minutes_per_km",
             "onboarding_completed",
+            "pix_key_type",
+            "pix_key",
             "rating_average",
             "rating_count",
         ]
@@ -101,9 +103,13 @@ class UserSerializer(serializers.ModelSerializer):
     profile_photo_url = serializers.SerializerMethodField()
 
     def get_profile_photo_url(self, obj):
-        if obj.profile_photo:
-            return obj.profile_photo.url
-        return None
+        if not obj.profile_photo:
+            return None
+        url = obj.profile_photo.url
+        if url.startswith("http"):
+            return url
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request else url
 
     class Meta:
         model = User

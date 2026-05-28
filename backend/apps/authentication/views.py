@@ -242,7 +242,7 @@ def confirm_password_reset(request):
 @permission_classes([permissions.IsAuthenticated])
 def me(request):
     """Get current user information."""
-    serializer = UserSerializer(request.user)
+    serializer = UserSerializer(request.user, context={"request": request})
     return Response(serializer.data)
 
 
@@ -298,7 +298,7 @@ def update_consumer_profile(request):
         request.user.email = data["email"]
         request.user.save()
 
-    return Response(UserSerializer(request.user).data)
+    return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 @api_view(["PUT", "PATCH"])
@@ -326,10 +326,19 @@ def update_provider_profile(request):
         request.user.set_password(data.pop("password"))
         request.user.save()
 
-    # Handle specialties (convert from JSON string if needed)
-    if "specialties" in data and isinstance(data["specialties"], str):
+    # Handle specialties (multipart individual values or legacy JSON string)
+    if "specialties" in data:
         import json
-        data["specialties"] = json.loads(data["specialties"])
+        specialties_raw = request.data.getlist("specialties")
+        if len(specialties_raw) == 1:
+            try:
+                parsed = json.loads(specialties_raw[0])
+                if isinstance(parsed, list):
+                    data.setlist("specialties", parsed)
+            except (ValueError, TypeError):
+                pass
+        else:
+            data.setlist("specialties", specialties_raw)
 
     # Update provider profile
     serializer = ProviderSerializer(provider, data=data, partial=True, context={"request": request})
@@ -346,7 +355,7 @@ def update_provider_profile(request):
         request.user.email = data["email"]
         request.user.save()
 
-    return Response(UserSerializer(request.user).data)
+    return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 @api_view(["PUT", "PATCH"])
@@ -392,7 +401,7 @@ def update_company_profile(request):
         request.user.email = data["email"]
         request.user.save()
 
-    return Response(UserSerializer(request.user).data)
+    return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 @api_view(["GET"])

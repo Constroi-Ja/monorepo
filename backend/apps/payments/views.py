@@ -242,19 +242,69 @@ class PaymentWebhookView(APIView):
                         raw_response=mp_data,
                     )
 
-                    # Activate visit when payment is approved
+                    # Activate visit or confirm order when payment is approved
                     if new_status == PaymentOrder.Status.APPROVED:
                         from django.utils import timezone as tz
-                        from apps.core.models import TechnicalVisitRequest
-                        order = PaymentOrder.objects.filter(mp_payment_id=str(resource_id)).first()
-                        if order:
+                        from apps.core.models import TechnicalVisitRequest, Order
+                        payment_order = PaymentOrder.objects.filter(mp_payment_id=str(resource_id)).first()
+                        if payment_order:
                             TechnicalVisitRequest.objects.filter(
-                                payment_order=order, status="awaiting_payment"
+                                payment_order=payment_order, status="awaiting_payment"
                             ).update(status="pending", pending_since=tz.now())
+                            Order.objects.filter(
+                                payment=payment_order, status="pendente"
+                            ).update(status="confirmado")
             except Exception as exc:
                 logger.exception("Webhook processing error: %s", exc)
 
         return Response(status=status.HTTP_200_OK)
+
+
+class SimulateApproveView(APIView):
+    """POST /api/payments/<mp_payment_id>/simulate-approve/
+    Simulates MP payment approval. Only works with TEST- access token.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, mp_payment_id):
+        token = getattr(settings, "MERCADOPAGO_ACCESS_TOKEN", "")
+        if not token.startswith("TEST-"):
+            return Response(
+                {"detail": "Simulação disponível apenas em modo de teste."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        payment_order = PaymentOrder.objects.filter(mp_payment_id=str(mp_payment_id)).first()
+        if not payment_order:
+            return Response({"detail": "Pagamento não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        sdk = _mp_sdk()
+        try:
+            result = sdk.payment().update(str(mp_payment_id), {"status": "approved"})
+            if result.get("status") not in (200, 201):
+                logger.error("MP simulate approve error: %s", result.get("response", {}))
+                return Response(
+                    {"detail": "Erro ao simular aprovação.", "mp_error": result.get("response", {})},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+        except Exception as exc:
+            logger.exception("Simulate approve error: %s", exc)
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        payment_order.status = PaymentOrder.Status.APPROVED
+        payment_order.save(update_fields=["status", "updated_at"])
+
+        from django.utils import timezone as tz
+        from apps.core.models import TechnicalVisitRequest, Order
+        TechnicalVisitRequest.objects.filter(
+            payment_order=payment_order, status="awaiting_payment"
+        ).update(status="pending", pending_since=tz.now())
+        Order.objects.filter(
+            payment=payment_order, status="pendente"
+        ).update(status="confirmado")
+
+        return Response({"ok": True, "status": "approved"})
 
 
 class MyPaymentsView(generics.ListAPIView):

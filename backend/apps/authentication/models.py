@@ -198,6 +198,15 @@ class Company(models.Model):
     closing_time = models.TimeField(null=True, blank=True)
     display_radius_km = models.DecimalField(max_digits=5, decimal_places=2, default=20)
     avg_minutes_per_km = models.DecimalField(max_digits=5, decimal_places=2, default=4)
+    PIX_KEY_TYPE_CHOICES = [
+        ("cpf", "CPF"),
+        ("cnpj", "CNPJ"),
+        ("email", "E-mail"),
+        ("telefone", "Telefone"),
+        ("aleatoria", "Chave Aleatória"),
+    ]
+    pix_key_type = models.CharField(max_length=20, choices=PIX_KEY_TYPE_CHOICES, blank=True, default="")
+    pix_key = models.CharField(max_length=255, blank=True, default="")
     onboarding_completed = models.BooleanField(default=False)
     rating_average = models.DecimalField(max_digits=3, decimal_places=2, default=0)
     rating_count = models.PositiveIntegerField(default=0)

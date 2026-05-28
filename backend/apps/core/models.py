@@ -22,8 +22,11 @@ class Item(models.Model):
         limit_choices_to={"user_type": "company"},
     )
     name = models.CharField(max_length=255, verbose_name="Nome do Produto")
+    marca = models.CharField(max_length=100, blank=True, default="", verbose_name="Marca")
     description = models.TextField(blank=True, null=True, verbose_name="Descrição")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço")
+    peso = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Peso (kg)")
+    stock_count = models.PositiveIntegerField(default=0, verbose_name="Estoque")
     shipping_type = models.CharField(
         max_length=20,
         choices=SHIPPING_TYPE_CHOICES,
@@ -228,3 +231,131 @@ class VisitMessage(models.Model):
 
     def __str__(self):
         return f"Msg#{self.id} visita#{self.visit_id} de {self.sender.email}"
+
+
+class Order(models.Model):
+    """Product order placed by a consumer or provider from a company store."""
+
+    STATUS_CHOICES = [
+        ("pendente", "Pendente"),
+        ("confirmado", "Confirmado"),
+        ("enviado", "Enviado"),
+        ("entregue", "Entregue"),
+        ("cancelado", "Cancelado"),
+    ]
+
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="orders")
+    company = models.ForeignKey(User, on_delete=models.CASCADE, related_name="company_orders")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente")
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment = models.OneToOneField(
+        "payments.PaymentOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "orders"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Pedido #{self.id} - {self.buyer.email}"
+
+
+class OrderItem(models.Model):
+    """Line item within a product order."""
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        db_table = "order_items"
+
+    def __str__(self):
+        return f"OrderItem #{self.id} - {self.item.name} x{self.quantity}"
+
+
+class OrderMessage(models.Model):
+    """Chat message between buyer and company for a product order."""
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "order_messages"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"OrderMsg#{self.id} pedido#{self.order_id} de {self.sender.email}"
+
+
+class InventoryEntry(models.Model):
+    """Internal stock/inventory item for a company (not related to public catalog)."""
+
+    UNIT_CHOICES = [
+        ("un", "Unidade"),
+        ("kg", "Kilograma"),
+        ("L", "Litro"),
+        ("m", "Metro"),
+        ("m2", "Metro²"),
+        ("m3", "Metro³"),
+        ("cx", "Caixa"),
+    ]
+
+    company = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="inventory_entries",
+        limit_choices_to={"user_type": "company"},
+    )
+    name = models.CharField(max_length=255)
+    category = models.CharField(max_length=100, blank=True, default="")
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="un")
+    min_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "inventory_entries"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.quantity} {self.unit})"
+
+
+class Bill(models.Model):
+    """A bill/expense registered by a company."""
+
+    CATEGORY_CHOICES = [
+        ("aluguel", "Aluguel"),
+        ("fornecedor", "Fornecedor"),
+        ("imposto", "Imposto"),
+        ("outros", "Outros"),
+    ]
+
+    company = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="bills",
+        limit_choices_to={"user_type": "company"},
+    )
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    due_date = models.DateField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="outros")
+    paid = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "bills"
+        ordering = ["due_date"]
+
+    def __str__(self):
+        return f"Conta #{self.id} - {self.description} R${self.amount}"

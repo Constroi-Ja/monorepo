@@ -14,14 +14,19 @@ from django.contrib.auth import get_user_model
 from apps.authentication.models import Company, Provider
 from apps.payments.models import PaymentOrder
 
-from .models import CartItem, Deliverer, Item, Review, TechnicalVisitRequest, VisitMessage
+from .models import Bill, CartItem, Deliverer, InventoryEntry, Item, Order, OrderItem, OrderMessage, Review, TechnicalVisitRequest, VisitMessage
 from .serializers import (
+    BillSerializer,
     CartItemSerializer,
+    CreateOrderSerializer,
     CreateVisitWithPaymentSerializer,
     DelivererSerializer,
+    InventoryEntrySerializer,
     ItemCreateSerializer,
     ItemSerializer,
     ItemUpdateSerializer,
+    OrderMessageSerializer,
+    OrderSerializer,
     PublicItemSerializer,
     ReviewSerializer,
     TechnicalVisitRequestSerializer,
@@ -389,7 +394,7 @@ def create_technical_visit(request):
     sdk = _mp_sdk()
     payment_method = data["payment_method"]
     external_ref = f"visit_{visit.id}"
-    amount = 80.00
+    amount = 0.10
     description = "Visita técnica"
 
     try:
@@ -826,3 +831,372 @@ def admin_stores_list(request):
             "created_at": c.user.date_joined.isoformat(),
         })
     return Response(data)
+
+
+# ---------------------------------------------------------------------------
+# Orders
+# ---------------------------------------------------------------------------
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_order(request):
+    """Create a product order and generate a PIX payment."""
+    if request.user.user_type not in ("consumer", "provider"):
+        return Response({"error": "Apenas consumidores e prestadores podem realizar compras."}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = CreateOrderSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    items_data = data["items"]
+    items_objs = [(Item.objects.get(id=e["item_id"]), int(e["quantity"])) for e in items_data]
+
+    companies = {item.company_id for item, _ in items_objs}
+    if len(companies) > 1:
+        return Response({"error": "Todos os itens devem ser da mesma empresa."}, status=status.HTTP_400_BAD_REQUEST)
+
+    company_user_id = companies.pop()
+    company_user = User.objects.get(id=company_user_id)
+    total = sum(float(item.price) * qty for item, qty in items_objs)
+
+    order = Order.objects.create(buyer=request.user, company=company_user, total_amount=total)
+    for item, qty in items_objs:
+        OrderItem.objects.create(order=order, item=item, quantity=qty, unit_price=item.price)
+
+    sdk = _mp_sdk()
+    external_ref = f"order_{order.id}"
+    cpf = _clean_cpf(data["payer_cpf"]) or "00000000000"
+    mp_payload = {
+        "transaction_amount": float(total),
+        "description": f"Pedido #{order.id}",
+        "external_reference": external_ref,
+        "payment_method_id": "pix",
+        "payer": {
+            "email": data["payer_email"],
+            "first_name": data["payer_first_name"],
+            "last_name": data["payer_last_name"],
+            "identification": {"type": "CPF", "number": cpf},
+        },
+    }
+
+    try:
+        result = sdk.payment().create(mp_payload)
+        response_data = result.get("response", {})
+        if result.get("status") not in (200, 201):
+            logger.error("MP PIX order error: %s", response_data)
+            order.delete()
+            mp_msg = response_data.get("message") or response_data.get("error") or "Erro desconhecido"
+            return Response({"error": f"Erro ao gerar PIX: {mp_msg}"}, status=status.HTTP_502_BAD_GATEWAY)
+
+        tx = response_data.get("point_of_interaction", {}).get("transaction_data", {})
+        payment = PaymentOrder.objects.create(
+            user=request.user,
+            mp_payment_id=str(response_data.get("id", "")),
+            method=PaymentOrder.Method.PIX,
+            status=PaymentOrder.Status.PENDING,
+            amount=total,
+            description=f"Pedido #{order.id}",
+            external_reference=external_ref,
+            pix_qr_code=tx.get("qr_code_base64", ""),
+            pix_qr_code_text=tx.get("qr_code", ""),
+            raw_response=response_data,
+        )
+        order.payment = payment
+        order.save(update_fields=["payment"])
+        CartItem.objects.filter(user=request.user).delete()
+    except Exception as exc:
+        logger.exception("Erro ao criar pagamento PIX para pedido %s: %s", order.id, exc)
+        order.delete()
+        return Response({"error": "Erro de comunicação com Mercado Pago."}, status=status.HTTP_502_BAD_GATEWAY)
+
+    return Response(
+        {
+            "order": OrderSerializer(order, context={"request": request}).data,
+            "payment": {
+                "payment_id": payment.id,
+                "mp_payment_id": payment.mp_payment_id,
+                "method": "pix",
+                "status": payment.status,
+                "qr_code_base64": payment.pix_qr_code,
+                "qr_code_text": payment.pix_qr_code_text,
+                "amount": str(payment.amount),
+            },
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_orders(request):
+    """Buyer lists their own product orders."""
+    if request.user.user_type not in ("consumer", "provider"):
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+    orders = (
+        Order.objects.filter(buyer=request.user)
+        .select_related("payment", "company__company_profile")
+        .prefetch_related("items__item")
+        .order_by("-created_at")
+    )
+    return Response(OrderSerializer(orders, many=True, context={"request": request}).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def company_orders(request):
+    """Company lists orders placed at their store."""
+    if request.user.user_type != "company":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+    orders = (
+        Order.objects.filter(company=request.user)
+        .select_related("payment", "buyer__consumer_profile", "buyer__provider_profile")
+        .prefetch_related("items__item")
+        .order_by("-created_at")
+    )
+    return Response(OrderSerializer(orders, many=True, context={"request": request}).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def order_detail(request, order_id: int):
+    """Buyer or company retrieves a single order."""
+    user = request.user
+    order = (
+        Order.objects.filter(Q(buyer=user) | Q(company=user), id=order_id)
+        .select_related("payment", "company__company_profile", "buyer__consumer_profile", "buyer__provider_profile")
+        .prefetch_related("items__item")
+        .first()
+    )
+    if not order:
+        return Response({"error": "Pedido não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+    return Response(OrderSerializer(order, context={"request": request}).data)
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def update_order_status(request, order_id: int):
+    """Advance order status. Company: pendente→confirmado→enviado. Buyer: enviado→entregue."""
+    user = request.user
+    order = Order.objects.filter(Q(buyer=user) | Q(company=user), id=order_id).first()
+    if not order:
+        return Response({"error": "Pedido não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    new_status = request.data.get("status")
+    if not new_status:
+        return Response({"error": "Campo 'status' obrigatório."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if user.user_type == "company" and order.company_id == user.id:
+        allowed = {"pendente": "confirmado", "confirmado": "enviado"}
+    elif order.buyer_id == user.id:
+        allowed = {"enviado": "entregue"}
+    else:
+        return Response({"error": "Sem permissão."}, status=status.HTTP_403_FORBIDDEN)
+
+    if new_status != allowed.get(order.status):
+        return Response(
+            {"error": f"Transição inválida: {order.status} → {new_status}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    order.status = new_status
+    order.save(update_fields=["status", "updated_at"])
+    return Response(OrderSerializer(order, context={"request": request}).data)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def order_messages(request, order_id: int):
+    """GET: list messages. POST: send a message."""
+    user = request.user
+    order = Order.objects.filter(Q(buyer=user) | Q(company=user), id=order_id).first()
+    if not order:
+        return Response({"error": "Pedido não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        msgs = OrderMessage.objects.filter(order=order).select_related("sender")
+        return Response(OrderMessageSerializer(msgs, many=True, context={"request": request}).data)
+
+    content = request.data.get("content", "").strip()
+    if not content:
+        return Response({"error": "Mensagem não pode ser vazia."}, status=status.HTTP_400_BAD_REQUEST)
+    msg = OrderMessage.objects.create(order=order, sender=user, content=content)
+    return Response(OrderMessageSerializer(msg, context={"request": request}).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def order_stats(request):
+    """Company dashboard: revenue and order statistics."""
+    if request.user.user_type != "company":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    from django.db.models import Sum
+    from django.db.models.functions import TruncDate
+    import datetime
+
+    period = request.query_params.get("period", "month")
+    today = datetime.date.today()
+    if period == "week":
+        since = today - datetime.timedelta(days=7)
+    elif period == "year":
+        since = today - datetime.timedelta(days=365)
+    else:
+        since = today - datetime.timedelta(days=30)
+
+    orders_qs = Order.objects.filter(company=request.user, created_at__date__gte=since)
+
+    revenue_by_day = list(
+        orders_qs.filter(status="entregue")
+        .annotate(date=TruncDate("created_at"))
+        .values("date")
+        .annotate(total=Sum("total_amount"))
+        .order_by("date")
+        .values("date", "total")
+    )
+
+    orders_by_status = {val: orders_qs.filter(status=val).count() for val, _ in Order.STATUS_CHOICES}
+
+    top_products = list(
+        OrderItem.objects.filter(order__company=request.user, order__created_at__date__gte=since)
+        .values("item__name")
+        .annotate(quantity=Sum("quantity"), revenue=Sum("unit_price"))
+        .order_by("-quantity")[:5]
+    )
+
+    return Response({
+        "revenue_by_day": [{"date": str(r["date"]), "total": float(r["total"])} for r in revenue_by_day],
+        "orders_by_status": orders_by_status,
+        "top_products": [{"name": r["item__name"], "quantity": r["quantity"], "revenue": float(r["revenue"])} for r in top_products],
+    })
+
+
+# ---------------------------------------------------------------------------
+# Bills (Contas a Pagar)
+# ---------------------------------------------------------------------------
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def bills_list_create(request):
+    """List or create bills for the authenticated company."""
+    if request.user.user_type != "company":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == "GET":
+        bills = Bill.objects.filter(company=request.user)
+        paid_param = request.query_params.get("paid")
+        if paid_param is not None:
+            bills = bills.filter(paid=paid_param.lower() == "true")
+        category = request.query_params.get("category")
+        if category:
+            bills = bills.filter(category=category)
+        return Response(BillSerializer(bills, many=True).data)
+
+    serializer = BillSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    bill = serializer.save(company=request.user)
+    return Response(BillSerializer(bill).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def bill_detail(request, bill_id: int):
+    """Update or delete a bill."""
+    if request.user.user_type != "company":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    bill = Bill.objects.filter(id=bill_id, company=request.user).first()
+    if not bill:
+        return Response({"error": "Conta não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "DELETE":
+        bill.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    serializer = BillSerializer(bill, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(BillSerializer(bill).data)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def inventory_list_create(request):
+    """List or create inventory entries for the authenticated company."""
+    if request.user.user_type != "company":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == "GET":
+        entries = InventoryEntry.objects.filter(company=request.user)
+        return Response(InventoryEntrySerializer(entries, many=True).data)
+
+    serializer = InventoryEntrySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    entry = serializer.save(company=request.user)
+    return Response(InventoryEntrySerializer(entry).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def inventory_detail(request, entry_id: int):
+    """Retrieve, update or delete an inventory entry."""
+    if request.user.user_type != "company":
+        return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+    entry = InventoryEntry.objects.filter(id=entry_id, company=request.user).first()
+    if not entry:
+        return Response({"error": "Entrada não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "DELETE":
+        entry.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    serializer = InventoryEntrySerializer(entry, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(InventoryEntrySerializer(entry).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def store_detail(request, store_id: int):
+    """GET /core/stores/<store_id>/ — Perfil completo da loja com seus produtos."""
+    try:
+        company = Company.objects.get(id=store_id)
+    except Company.DoesNotExist:
+        return Response({"detail": "Loja não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+    user_cep = ""
+    if hasattr(request.user, "consumer_profile"):
+        user_cep = getattr(request.user.consumer_profile, "cep", "")
+    elif hasattr(request.user, "provider_profile"):
+        user_cep = getattr(request.user.provider_profile, "cep", "")
+
+    distance = estimate_distance_km(user_cep, company.cep or "")
+
+    image_url = None
+    if company.logo:
+        try:
+            image_url = company.logo.url
+        except Exception:
+            pass
+
+    items = Item.objects.filter(company=company.user)
+    items_data = ItemSerializer(items, many=True, context={"request": request}).data
+
+    return Response({
+        "id": company.id,
+        "company_name": company.company_name,
+        "category": company.segment,
+        "phone": getattr(company, "phone", None),
+        "address": f"{company.street}, {company.number}" if company.street else None,
+        "city": company.city,
+        "state": company.state,
+        "distance": round(distance, 1),
+        "rating": float(company.rating_average or 0),
+        "rating_count": company.rating_count,
+        "is_open": is_company_open(company),
+        "opening_time": company.opening_time.strftime("%H:%M") if company.opening_time else None,
+        "closing_time": company.closing_time.strftime("%H:%M") if company.closing_time else None,
+        "image_url": image_url,
+        "items": items_data,
+    })

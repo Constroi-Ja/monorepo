@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import CartItem, Deliverer, Item, Review, TechnicalVisitRequest, VisitMessage
+from .models import Bill, CartItem, Deliverer, InventoryEntry, Item, Order, OrderItem, OrderMessage, Review, TechnicalVisitRequest, VisitMessage
 
 User = get_user_model()
 
@@ -18,6 +18,9 @@ class ItemSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "marca",
+            "peso",
+            "stock_count",
             "description",
             "price",
             "shipping_type",
@@ -266,3 +269,124 @@ class VisitMessageSerializer(serializers.ModelSerializer):
         if hasattr(user, "provider_profile"):
             return user.provider_profile.full_name
         return user.email
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    item_name = serializers.CharField(source="item.name", read_only=True)
+    item_marca = serializers.CharField(source="item.marca", read_only=True)
+    item_photo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderItem
+        fields = ["id", "item", "item_name", "item_marca", "item_photo_url", "quantity", "unit_price"]
+
+    def get_item_photo_url(self, obj):
+        if obj.item.photo and hasattr(obj.item.photo, "url"):
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.item.photo.url)
+            return obj.item.photo.url
+        return None
+
+
+class OrderMessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.SerializerMethodField(read_only=True)
+    is_mine = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = OrderMessage
+        fields = ["id", "sender_name", "is_mine", "content", "created_at"]
+        read_only_fields = ["id", "sender_name", "is_mine", "created_at"]
+
+    def get_sender_name(self, obj):
+        user = obj.sender
+        if hasattr(user, "consumer_profile"):
+            return user.consumer_profile.full_name
+        if hasattr(user, "provider_profile"):
+            return user.provider_profile.full_name
+        if hasattr(user, "company_profile"):
+            return user.company_profile.company_name
+        return user.email
+
+    def get_is_mine(self, obj):
+        request = self.context.get("request")
+        return request and obj.sender_id == request.user.id
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    company_name = serializers.SerializerMethodField()
+    buyer_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    payment_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            "id", "buyer", "buyer_name", "company", "company_name",
+            "status", "status_display", "total_amount",
+            "payment_status", "items", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "buyer", "company", "status", "total_amount", "created_at", "updated_at"]
+
+    def get_company_name(self, obj):
+        if hasattr(obj.company, "company_profile"):
+            return obj.company.company_profile.company_name
+        return obj.company.email
+
+    def get_buyer_name(self, obj):
+        if hasattr(obj.buyer, "consumer_profile"):
+            return obj.buyer.consumer_profile.full_name
+        if hasattr(obj.buyer, "provider_profile"):
+            return obj.buyer.provider_profile.full_name
+        return obj.buyer.email
+
+    def get_payment_status(self, obj):
+        if obj.payment_id:
+            return obj.payment.status
+        return None
+
+
+class CreateOrderSerializer(serializers.Serializer):
+    """Input for creating a product order with PIX payment."""
+
+    items = serializers.ListField(
+        child=serializers.DictField(), min_length=1
+    )
+    payer_email = serializers.EmailField()
+    payer_first_name = serializers.CharField(max_length=100)
+    payer_last_name = serializers.CharField(max_length=100)
+    payer_cpf = serializers.CharField(max_length=20)
+
+    def validate_items(self, value):
+        for entry in value:
+            if "item_id" not in entry or "quantity" not in entry:
+                raise serializers.ValidationError("Cada item deve ter 'item_id' e 'quantity'.")
+            try:
+                Item.objects.get(id=entry["item_id"], is_for_sale=True)
+            except Item.DoesNotExist:
+                raise serializers.ValidationError(f"Item {entry['item_id']} não encontrado ou fora de venda.")
+        return value
+
+
+class BillSerializer(serializers.ModelSerializer):
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
+
+    class Meta:
+        model = Bill
+        fields = [
+            "id", "description", "amount", "due_date",
+            "category", "category_display", "paid", "created_at",
+        ]
+        read_only_fields = ["id", "created_at", "category_display"]
+
+
+class InventoryEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InventoryEntry
+        fields = [
+            "id", "name", "category", "quantity", "unit",
+            "min_quantity", "purchase_price", "notes",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
