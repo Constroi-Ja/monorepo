@@ -1,27 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { apiClient } from "@/lib/api-client";
 
+type Status = "loading" | "success" | "error";
+
 export default function ConfirmEmailPage() {
   const params = useParams();
   const router = useRouter();
   const token = params?.token as string;
-  const [loading, setLoading] = useState(true);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>("loading");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasConfirmed = useRef(false);
 
   useEffect(() => {
-    if (token) {
-      confirmEmail();
-    } else {
-      setError("Token inválido");
-      setLoading(false);
+    if (!token) {
+      setErrorMessage("Token inválido");
+      setStatus("error");
+      return;
     }
+    if (hasConfirmed.current) return;
+    hasConfirmed.current = true;
+    confirmEmail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -32,19 +36,18 @@ export default function ConfirmEmailPage() {
       });
 
       if (response.error) {
-        setError(response.error.message || "Erro ao confirmar email");
+        setErrorMessage(response.error.message || "Erro ao confirmar email");
+        setStatus("error");
       } else {
-        setSuccess(true);
-        // Redirecionar para login após 3 segundos
+        setStatus("success");
         setTimeout(() => {
           router.push("/login?confirmed=true");
         }, 3000);
       }
     } catch (error) {
       console.error("Error confirming email:", error);
-      setError("Erro ao confirmar email. Tente novamente.");
-    } finally {
-      setLoading(false);
+      setErrorMessage("Erro ao confirmar email. Tente novamente.");
+      setStatus("error");
     }
   };
 
@@ -57,7 +60,7 @@ export default function ConfirmEmailPage() {
             <Logo showTagline tagline="Confirmando email" />
           </div>
 
-          {loading && (
+          {status === "loading" && (
             <>
               <div className="mb-6">
                 <div className="mx-auto w-20 h-20 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
@@ -66,7 +69,7 @@ export default function ConfirmEmailPage() {
             </>
           )}
 
-          {success && (
+          {status === "success" && (
             <>
               <div className="mb-6">
                 <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
@@ -99,7 +102,7 @@ export default function ConfirmEmailPage() {
             </>
           )}
 
-          {error && (
+          {status === "error" && (
             <>
               <div className="mb-6">
                 <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
@@ -122,7 +125,7 @@ export default function ConfirmEmailPage() {
                 Erro ao confirmar email
               </h1>
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-800">{errorMessage}</p>
               </div>
               <div className="space-y-3">
                 <Link href="/login" className="block">

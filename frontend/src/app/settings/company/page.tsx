@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -42,13 +42,35 @@ const states = [
   { value: "TO", label: "Tocantins" },
 ];
 
+const pixKeyTypes = [
+  { value: "", label: "Selecione o tipo de chave" },
+  { value: "cpf", label: "CPF" },
+  { value: "cnpj", label: "CNPJ" },
+  { value: "email", label: "E-mail" },
+  { value: "telefone", label: "Telefone" },
+  { value: "aleatoria", label: "Chave Aleatória" },
+];
+
+type Tab = "empresa" | "localizacao" | "recebimento" | "seguranca";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "empresa", label: "Empresa" },
+  { id: "localizacao", label: "Localização & Horários" },
+  { id: "recebimento", label: "Dados de Recebimento" },
+  { id: "seguranca", label: "Segurança" },
+];
+
 export default function CompanySettingsPage() {
   const { user, loading: authLoading, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>("empresa");
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     company_name: "",
     email: "",
@@ -61,119 +83,187 @@ export default function CompanySettingsPage() {
     complement: "",
     city: "",
     state: "",
-    password: "",
-    confirm_password: "",
     opening_time: "",
     closing_time: "",
     display_radius_km: "20",
     avg_minutes_per_km: "4",
-    onboarding_completed: false,
+    pix_key_type: "",
+    pix_key: "",
+    password: "",
+    confirm_password: "",
   });
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push("/login");
-    }
+    if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     if (user && user.user_type === "company" && user.company_profile) {
-      const profile = user.company_profile;
+      const p = user.company_profile;
+      if ((user as any).profile_photo_url) setProfilePhotoPreview((user as any).profile_photo_url);
       setFormData({
-        company_name: profile.company_name || "",
+        company_name: p.company_name || "",
         email: user.email || "",
-        cnpj: profile.cnpj || "",
-        segment: profile.segment || "",
-        phone: profile.phone || "",
-        cep: profile.cep || "",
-        street: profile.street || "",
-        number: profile.number || "",
-        complement: profile.complement || "",
-        city: profile.city || "",
-        state: profile.state || "",
+        cnpj: p.cnpj || "",
+        segment: p.segment || "",
+        phone: p.phone || "",
+        cep: p.cep || "",
+        street: p.street || "",
+        number: p.number || "",
+        complement: p.complement || "",
+        city: p.city || "",
+        state: p.state || "",
+        opening_time: p.opening_time || "",
+        closing_time: p.closing_time || "",
+        display_radius_km: String(p.display_radius_km || 20),
+        avg_minutes_per_km: String(p.avg_minutes_per_km || 4),
+        pix_key_type: p.pix_key_type || "",
+        pix_key: p.pix_key || "",
         password: "",
         confirm_password: "",
-        opening_time: profile.opening_time || "",
-        closing_time: profile.closing_time || "",
-        display_radius_km: String(profile.display_radius_km || 20),
-        avg_minutes_per_km: String(profile.avg_minutes_per_km || 4),
-        onboarding_completed: profile.onboarding_completed || false,
       });
     }
   }, [user]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProfilePhotoFile(file);
+    setProfilePhotoPreview(URL.createObjectURL(file));
+  };
+
+  const update = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
     setSuccessMessage("");
     setErrorMessage("");
+  };
 
-    try {
-      const updateData: any = {
-        company_name: formData.company_name,
-        cep: formData.cep.replace(/\D/g, ""),
-        street: formData.street,
-        number: formData.number,
-        complement: formData.complement || null,
-        city: formData.city,
-        state: formData.state,
-        cnpj: formData.cnpj.replace(/\D/g, ""),
-        segment: formData.segment,
-        phone: formData.phone.replace(/\D/g, ""),
-        opening_time: formData.opening_time || null,
-        closing_time: formData.closing_time || null,
-        display_radius_km: Number(formData.display_radius_km),
-        avg_minutes_per_km: Number(formData.avg_minutes_per_km),
-        onboarding_completed: true,
-      };
-
-      if (formData.password) {
-        if (formData.password !== formData.confirm_password) {
-          setErrorMessage("As senhas não coincidem");
-          setLoading(false);
-          return;
+  const buildPayload = (tab: Tab) => {
+    switch (tab) {
+      case "empresa":
+        return {
+          company_name: formData.company_name,
+          email: formData.email,
+          cnpj: formData.cnpj.replace(/\D/g, ""),
+          segment: formData.segment,
+          phone: formData.phone.replace(/\D/g, ""),
+        };
+      case "localizacao":
+        if (!formData.opening_time || !formData.closing_time) {
+          setErrorMessage("Horário de abertura e fechamento são obrigatórios.");
+          return null;
         }
-        updateData.password = formData.password;
+        return {
+          cep: formData.cep.replace(/\D/g, ""),
+          street: formData.street,
+          number: formData.number,
+          complement: formData.complement || null,
+          city: formData.city,
+          state: formData.state,
+          opening_time: formData.opening_time,
+          closing_time: formData.closing_time,
+          display_radius_km: Number(formData.display_radius_km),
+          avg_minutes_per_km: Number(formData.avg_minutes_per_km),
+        };
+      case "recebimento":
+        if (!formData.pix_key_type || !formData.pix_key.trim()) {
+          setErrorMessage("Tipo de chave PIX e a chave são obrigatórios.");
+          return null;
+        }
+        return {
+          pix_key_type: formData.pix_key_type,
+          pix_key: formData.pix_key.trim(),
+        };
+      case "seguranca":
+        if (formData.password !== formData.confirm_password) {
+          setErrorMessage("As senhas não coincidem.");
+          return null;
+        }
+        if (!formData.password) {
+          setErrorMessage("Digite uma nova senha.");
+          return null;
+        }
+        return { password: formData.password };
+      default:
+        return {};
+    }
+  };
+
+  const handleSave = async () => {
+    setSuccessMessage("");
+    setErrorMessage("");
+    const payload = buildPayload(activeTab);
+    if (!payload) return;
+
+    setLoading(true);
+    try {
+      let response;
+      if (activeTab === "empresa" && profilePhotoFile) {
+        const form = new FormData();
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v != null) form.append(k, String(v));
+        });
+        form.append("profile_photo", profilePhotoFile);
+        response = await apiClient.put("/auth/profile/company/", form);
+      } else {
+        response = await apiClient.put("/auth/profile/company/", payload, {
+          headers: { "Content-Type": "application/json" },
+        });
       }
-
-      const response = await apiClient.put("/auth/profile/company/", updateData, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
       if (response.error) {
-        setErrorMessage(response.error.message || "Erro ao atualizar perfil");
+        setErrorMessage(response.error.message || "Erro ao salvar.");
       } else {
         await refreshUser();
-        setSuccessMessage("Perfil atualizado com sucesso!");
-        setTimeout(() => router.push("/dashboard"), 1500);
+        setSuccessMessage("Salvo com sucesso!");
+        if (activeTab === "empresa") setProfilePhotoFile(null);
+        if (activeTab === "seguranca") {
+          setFormData((prev) => ({ ...prev, password: "", confirm_password: "" }));
+        }
       }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      setErrorMessage("Erro ao atualizar perfil");
+    } catch {
+      setErrorMessage("Erro ao salvar.");
     } finally {
       setLoading(false);
     }
   };
 
   if (authLoading || !user || user.user_type !== "company") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50">
-        <div className="text-lg">Carregando...</div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center bg-orange-50"><div className="text-lg">Carregando...</div></div>;
   }
 
   return (
     <div className="min-h-screen bg-orange-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <Breadcrumb
-          items={[
-            { label: "Painel", href: "/dashboard/company" },
-            { label: "Configurações" },
-          ]}
-        />
+        <Breadcrumb items={[{ label: "Painel", href: "/dashboard/company" }, { label: "Configurações" }]} />
+
+        <div className="mb-6 flex items-center gap-3">
+          <Link href="/dashboard" className="flex items-center text-gray-600 hover:text-gray-800">
+            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Voltar
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-800">Configurações</h1>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex overflow-x-auto gap-1 bg-white rounded-xl p-1 shadow-sm mb-6 border border-gray-100">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setSuccessMessage(""); setErrorMessage(""); }}
+              className={`flex-1 min-w-max px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? "bg-orange-500 text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Feedback */}
         {successMessage && (
           <div className="mb-4 flex items-center gap-2 bg-green-50 border border-green-300 text-green-800 rounded-lg px-4 py-3">
             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,97 +280,146 @@ export default function CompanySettingsPage() {
             {errorMessage}
           </div>
         )}
-        <div className="mb-6">
-          <Link href="/dashboard" className="flex items-center text-gray-600 hover:text-gray-800 mb-2">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Voltar
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-800">Configurações</h1>
-          {searchParams.get("onboarding") === "1" && (
-            <p className="mt-2 text-sm text-orange-700 bg-orange-100 inline-block px-3 py-1 rounded-md">
-              Finalize seu cadastro para começar a receber pedidos.
-            </p>
+
+        <div className="bg-white rounded-xl p-6 border-b-2 border-orange-500 shadow-sm">
+          {/* ── TAB: EMPRESA ── */}
+          {activeTab === "empresa" && (
+            <div className="space-y-5">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Informações da Empresa</h2>
+
+              {/* Logo */}
+              <div className="flex items-center gap-5 pb-4 border-b border-gray-100">
+                <div className="relative">
+                  {profilePhotoPreview ? (
+                    <img src={profilePhotoPreview} alt="Logo da empresa" className="w-20 h-20 rounded-full object-cover border-2 border-orange-200" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center text-2xl font-semibold text-orange-600">
+                      {formData.company_name.charAt(0).toUpperCase() || "E"}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center text-white hover:bg-orange-600 transition-colors shadow"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                </div>
+                <div>
+                  <button type="button" onClick={() => photoInputRef.current?.click()} className="text-sm text-orange-500 font-medium hover:text-orange-600 transition-colors">
+                    Escolher nova foto
+                  </button>
+                  <p className="text-xs text-gray-400 mt-1">JPG ou PNG. Máximo 5MB.</p>
+                </div>
+                <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input label="Nome da Empresa" showRequired value={formData.company_name} onChange={(e) => update("company_name", e.target.value)} />
+                <Input label="Email" type="email" showRequired value={formData.email} onChange={(e) => update("email", e.target.value)} />
+                <Input label="CNPJ" showRequired value={formData.cnpj} onChange={(e) => update("cnpj", formatCNPJ(e.target.value))} />
+                <Input label="Segmento" showRequired value={formData.segment} onChange={(e) => update("segment", e.target.value)} />
+                <Input label="Telefone" showRequired value={formData.phone} onChange={(e) => update("phone", formatPhone(e.target.value))} />
+              </div>
+
+            </div>
           )}
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Current Plan */}
-          <div className="bg-white rounded-xl p-6 border-b-2 border-orange-500">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Plano Atual</h2>
-            <div className="flex items-center justify-between">
-              <button type="button" className="px-4 py-2 bg-gray-800 text-white rounded-lg flex items-center space-x-2">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <span>Plano Gratuito</span>
-              </button>
-              <Button type="button" variant="primary" onClick={() => router.push("/settings?tab=plan")}>
-                Fazer Upgrade
-              </Button>
-            </div>
-          </div>
-
-          {/* Profile Photo */}
-          <div className="bg-white rounded-xl p-6 border-b-2 border-orange-500">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Foto de Perfil</h2>
-            <div className="flex items-center space-x-4">
-              <div className="w-20 h-20 rounded-full bg-gray-300 flex items-center justify-center text-2xl font-semibold text-gray-600">
-                {formData.company_name.charAt(0).toUpperCase() || "E"}
+          {/* ── TAB: LOCALIZAÇÃO & HORÁRIOS ── */}
+          {activeTab === "localizacao" && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Localização & Horários</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input label="CEP" value={formData.cep} onChange={(e) => update("cep", formatCEP(e.target.value))} />
+                <Input label="Número" value={formData.number} onChange={(e) => update("number", e.target.value)} />
+                <Input label="Rua" value={formData.street} onChange={(e) => update("street", e.target.value)} />
+                <Input label="Complemento" value={formData.complement} onChange={(e) => update("complement", e.target.value)} />
+                <Input label="Cidade" value={formData.city} onChange={(e) => update("city", e.target.value)} />
+                <Select label="Estado" options={states} value={formData.state} onChange={(e) => update("state", e.target.value)} />
               </div>
-              <div>
-                <Button type="button" variant="outline">Escolher nova foto</Button>
-                <p className="text-sm text-gray-500 mt-2">JPG, PNG ou GIF. Máximo 5MB.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                <Input label="Horário de abertura" showRequired type="time" value={formData.opening_time} onChange={(e) => update("opening_time", e.target.value)} />
+                <Input label="Horário de fechamento" showRequired type="time" value={formData.closing_time} onChange={(e) => update("closing_time", e.target.value)} />
+                <Input label="Distância de exibição (km)" type="number" value={formData.display_radius_km} onChange={(e) => update("display_radius_km", e.target.value)} />
+                <Input label="Tempo médio por km (min)" type="number" value={formData.avg_minutes_per_km} onChange={(e) => update("avg_minutes_per_km", e.target.value)} />
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Company Information */}
-          <div className="bg-white rounded-xl p-6 border-b-2 border-orange-500">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Informações Pessoais</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Nome da Empresa" value={formData.company_name} onChange={(e) => setFormData({ ...formData, company_name: e.target.value })} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>} />
-              <Input label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>} />
-              <Input label="CNPJ" value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: formatCNPJ(e.target.value) })} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>} />
-              <Input label="Segmento" value={formData.segment} onChange={(e) => setFormData({ ...formData, segment: e.target.value })} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>} />
-              <Input label="Telefone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>} />
+          {/* ── TAB: DADOS DE RECEBIMENTO ── */}
+          {activeTab === "recebimento" && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Dados de Recebimento</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Informe sua chave PIX para receber os pagamentos das vendas realizadas na plataforma.
+              </p>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-orange-800">
+                  <strong>Importante:</strong> Esses dados serão utilizados para transferência dos valores das vendas. Certifique-se de que as informações estão corretas.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Select
+                  label="Tipo de Chave PIX"
+                  showRequired
+                  options={pixKeyTypes}
+                  value={formData.pix_key_type}
+                  onChange={(e) => update("pix_key_type", e.target.value)}
+                />
+                <Input
+                  label="Chave PIX"
+                  showRequired
+                  value={formData.pix_key}
+                  onChange={(e) => update("pix_key", e.target.value)}
+                  placeholder="Digite sua chave PIX"
+                />
+              </div>
+              {formData.pix_key_type && formData.pix_key && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <p className="text-sm text-green-800">Chave PIX configurada</p>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
-          {/* Location Data */}
-          <div className="bg-white rounded-xl p-6 border-b-2 border-orange-500">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Dados de Localização</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="CEP" value={formData.cep} onChange={(e) => setFormData({ ...formData, cep: formatCEP(e.target.value) })} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
-              <Input label="Número" value={formData.number} onChange={(e) => setFormData({ ...formData, number: e.target.value })} />
-              <Input label="Rua" value={formData.street} onChange={(e) => setFormData({ ...formData, street: e.target.value })} />
-              <Input label="Complemento" value={formData.complement} onChange={(e) => setFormData({ ...formData, complement: e.target.value })} />
-              <Input label="Cidade" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
-              <Select label="Estado" options={states} value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} />
-              <Input label="Horário de abertura" type="time" value={formData.opening_time} onChange={(e) => setFormData({ ...formData, opening_time: e.target.value })} />
-              <Input label="Horário de fechamento" type="time" value={formData.closing_time} onChange={(e) => setFormData({ ...formData, closing_time: e.target.value })} />
-              <Input label="Distância de exibição (km)" type="number" value={formData.display_radius_km} onChange={(e) => setFormData({ ...formData, display_radius_km: e.target.value })} />
-              <Input label="Tempo médio por km (min)" type="number" value={formData.avg_minutes_per_km} onChange={(e) => setFormData({ ...formData, avg_minutes_per_km: e.target.value })} />
+          {/* ── TAB: SEGURANÇA ── */}
+          {activeTab === "seguranca" && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Alterar Senha</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Nova Senha"
+                  showRequired
+                  type="password"
+                  value={formData.password}
+                  autoComplete="new-password"
+                  onChange={(e) => update("password", e.target.value)}
+                />
+                <Input
+                  label="Confirmar Nova Senha"
+                  showRequired
+                  type="password"
+                  value={formData.confirm_password}
+                  autoComplete="new-password"
+                  onChange={(e) => update("confirm_password", e.target.value)}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Change Password */}
-          <div className="bg-white rounded-xl p-6 border-b-2 border-orange-500">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Alterar Senha</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Nova Senha" type="password" value={formData.password} autoComplete="new-password" onChange={(e) => setFormData({ ...formData, password: e.target.value })} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>} />
-              <Input label="Confirmar Nova Senha" type="password" value={formData.confirm_password} autoComplete="new-password" onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>} />
-            </div>
-            <p className="text-sm text-gray-500 mt-2">Deixe em branco se não deseja alterar a senha</p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-4">
+          {/* Save Button */}
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
             <Button type="button" variant="outline" onClick={() => router.push("/dashboard")}>Cancelar</Button>
-            <Button type="submit" variant="primary" disabled={loading}>{loading ? "Salvando..." : "Salvar Alterações"}</Button>
+            <Button type="button" variant="primary" disabled={loading} onClick={handleSave}>
+              {loading ? "Salvando..." : "Salvar Alterações"}
+            </Button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

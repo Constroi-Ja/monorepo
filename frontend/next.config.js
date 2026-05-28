@@ -4,7 +4,10 @@ const nextConfig = {
   swcMinify: true,
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+    ],
   },
   async rewrites() {
     return [

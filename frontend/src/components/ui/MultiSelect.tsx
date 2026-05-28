@@ -6,6 +6,7 @@ interface MultiSelectProps {
   selected: string[];
   onChange: (selected: string[]) => void;
   placeholder?: string;
+  showRequired?: boolean;
 }
 
 export const MultiSelect: React.FC<MultiSelectProps> = ({
@@ -14,6 +15,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   selected,
   onChange,
   placeholder = "Selecione...",
+  showRequired,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -28,7 +30,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   return (
     <div className="w-full">
       <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
+        {label}{showRequired && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <div className="relative">
         <button

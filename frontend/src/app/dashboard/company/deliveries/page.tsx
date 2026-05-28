@@ -128,6 +128,7 @@ export default function CompanyDeliveriesPage() {
       <Sidebar
         userName={user.company_profile?.company_name || user.username}
         userInitial={(user.company_profile?.company_name || user.username).charAt(0).toUpperCase()}
+        userPhoto={(user as any).profile_photo_url}
       />
       <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-4xl mx-auto">

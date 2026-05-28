@@ -17,10 +17,13 @@ interface MarketplaceItem {
   company_id: number;
   company_name: string;
   name: string;
+  marca?: string;
+  peso?: number | null;
   description: string;
   price: string;
   shipping_type?: string;
   shipping_type_display?: string;
+  photo_url?: string | null;
 }
 
 type Tab = "lojas" | "produtos";
@@ -191,7 +194,7 @@ export default function MaterialsPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
       <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
@@ -317,6 +320,7 @@ export default function MaterialsPage() {
                       selected={selectedStoreId === store.id}
                       loading={loadingStoreItems && selectedStoreId === store.id}
                       onSelect={openStoreItems}
+                      onNavigate={(id) => router.push(`/stores/${id}`)}
                     />
                   ))}
                 </div>
@@ -405,9 +409,10 @@ interface StoreCardProps {
   selected: boolean;
   loading: boolean;
   onSelect: (store: Store) => void;
+  onNavigate?: (storeId: number) => void;
 }
 
-function StoreCard({ store, selected, loading, onSelect }: StoreCardProps) {
+function StoreCard({ store, selected, loading, onSelect, onNavigate }: StoreCardProps) {
   return (
     <article
       className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
@@ -445,11 +450,11 @@ function StoreCard({ store, selected, loading, onSelect }: StoreCardProps) {
           <span>~{store.eta_minutes || "-"} min</span>
         </div>
         <button
-          onClick={() => onSelect(store)}
+          onClick={() => onNavigate ? onNavigate(store.id) : onSelect(store)}
           disabled={loading}
           className="w-full bg-orange-500 text-white text-sm font-medium rounded-xl py-2.5 hover:bg-orange-600 transition-colors disabled:opacity-60"
         >
-          {loading ? "Carregando..." : "Ver itens"}
+          {loading ? "Carregando..." : "Ver loja"}
         </button>
       </div>
     </article>
@@ -473,8 +478,18 @@ function ItemCard({ item, adding, showCompany = false, onAdd }: ItemCardProps) {
 
   return (
     <article className="bg-white border border-gray-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all flex flex-col">
+      {item.photo_url && (
+        <div className="h-28 rounded-xl overflow-hidden mb-3 bg-gray-100 -mx-0">
+          <img src={item.photo_url} alt={item.name} className="w-full h-full object-cover" />
+        </div>
+      )}
       <div className="flex-1">
         <h3 className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</h3>
+        {(item.marca || item.peso) && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            {item.marca}{item.marca && item.peso ? " · " : ""}{item.peso ? `${item.peso} kg` : ""}
+          </p>
+        )}
         {showCompany && (
           <p className="text-xs text-orange-500 font-medium mt-0.5">{item.company_name}</p>
         )}

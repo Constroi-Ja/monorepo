@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
@@ -29,6 +29,7 @@ interface CardForm {
 export default function ProvidersPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,8 @@ export default function ProvidersPage() {
   const [processing, setProcessing] = useState(false);
   const [modalError, setModalError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [pixData, setPixData] = useState<{ payment_id: number; qr_code_base64: string; qr_code_text: string } | null>(null);
+  const [pixData, setPixData] = useState<{ payment_id: number; mp_payment_id?: string; qr_code_base64: string; qr_code_text: string } | null>(null);
+  const [simulateDone, setSimulateDone] = useState(false);
   const [visitId, setVisitId] = useState<number | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -67,6 +69,23 @@ export default function ProvidersPage() {
     fetchProviders();
   }, []);
 
+  // Auto-open booking modal when ?provider_id=X is present
+  useEffect(() => {
+    const pid = searchParams.get("provider_id");
+    if (!pid || providers.length === 0 || selectedProvider) return;
+    const found = providers.find((p) => String(p.id) === pid);
+    if (found) {
+      setSelectedProvider(found);
+      setModalStep("details");
+      setPayMethod("pix");
+      setNotes("");
+      setModalError("");
+      setPixData(null);
+      setVisitId(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providers]);
+
   // Prefill payer info from user profile
   useEffect(() => {
     if (user) {
@@ -87,6 +106,7 @@ export default function ProvidersPage() {
       const r = await apiClient.get<{ status: string }>(`/payments/${pixData.payment_id}/`);
       if (r.data?.status === "approved") {
         clearInterval(pollingRef.current!);
+        router.refresh();
         router.push(`/visitas/${visitId}`);
       }
     }, 5000);
@@ -143,6 +163,7 @@ export default function ProvidersPage() {
       if (payMethod === "pix") {
         setPixData({
           payment_id: payment.payment_id,
+          mp_payment_id: (payment as any).mp_payment_id,
           qr_code_base64: payment.qr_code_base64 || "",
           qr_code_text: payment.qr_code_text || "",
         });
@@ -185,7 +206,7 @@ export default function ProvidersPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
       <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
@@ -475,6 +496,22 @@ export default function ProvidersPage() {
                         {copied ? "Copiado!" : "Copiar código PIX"}
                       </button>
                     </>
+                  )}
+
+                  {process.env.NEXT_PUBLIC_TEST_MODE === "true" && pixData.mp_payment_id && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await apiClient.post(`/payments/${pixData.mp_payment_id}/simulate-approve/`);
+                          setSimulateDone(true);
+                          if (visitId) setTimeout(() => { router.refresh(); router.push(`/visitas/${visitId}`); }, 800);
+                        } catch { /* ignore */ }
+                      }}
+                      disabled={simulateDone}
+                      className="w-full py-2.5 bg-yellow-400 text-yellow-900 rounded-xl text-sm font-semibold hover:bg-yellow-500 disabled:opacity-60 transition-colors"
+                    >
+                      {simulateDone ? "Aprovado!" : "⚡ Simular pagamento aprovado (teste)"}
+                    </button>
                   )}
 
                   <div className="flex items-center justify-center gap-2 text-xs text-gray-400">

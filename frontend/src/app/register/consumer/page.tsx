@@ -110,6 +110,7 @@ function Step1({ data, updateData, errors, setErrors }: {
     <div className="space-y-4">
       <Input
         label="Nome Completo"
+        showRequired
         placeholder="Seu nome completo"
         value={data.fullName}
         onChange={(e) => {
@@ -125,6 +126,7 @@ function Step1({ data, updateData, errors, setErrors }: {
       />
       <Input
         label="Email"
+        showRequired
         type="email"
         placeholder="seu@email.com"
         value={data.email}
@@ -141,6 +143,7 @@ function Step1({ data, updateData, errors, setErrors }: {
       />
       <Input
         label="Senha"
+        showRequired
         type={showPassword ? "text" : "password"}
         placeholder="********"
         value={data.password}
@@ -171,6 +174,7 @@ function Step1({ data, updateData, errors, setErrors }: {
       />
       <Input
         label="Confirmar Senha"
+        showRequired
         type={showConfirmPassword ? "text" : "password"}
         placeholder="********"
         value={data.confirmPassword}
@@ -199,6 +203,7 @@ function Step1({ data, updateData, errors, setErrors }: {
           </button>
         }
       />
+      <p className="text-xs text-gray-500"><span className="text-red-500">*</span> Campo obrigatório</p>
     </div>
   );
 }
@@ -237,6 +242,7 @@ function Step2({ data, updateData, errors, setErrors }: {
         <div>
           <Input
             label="CEP"
+            showRequired
             placeholder="00000-000"
             value={data.cep}
             onChange={(e) => handleCEPChange(e.target.value)}
@@ -252,6 +258,7 @@ function Step2({ data, updateData, errors, setErrors }: {
         </div>
         <Input
           label="Número"
+          showRequired
           placeholder="123"
           value={data.number}
           onChange={(e) => {
@@ -263,6 +270,7 @@ function Step2({ data, updateData, errors, setErrors }: {
       </div>
       <Input
         label="Rua"
+        showRequired
         placeholder="Nome da rua"
         value={data.street}
         onChange={(e) => {
@@ -289,6 +297,7 @@ function Step2({ data, updateData, errors, setErrors }: {
       />
       <Input
         label="Cidade"
+        showRequired
         placeholder="Sua cidade"
         value={data.city}
         onChange={(e) => {
@@ -299,6 +308,7 @@ function Step2({ data, updateData, errors, setErrors }: {
       />
       <Select
         label="Estado"
+        showRequired
         options={states}
         value={data.state}
         onChange={(e) => {
@@ -307,6 +317,7 @@ function Step2({ data, updateData, errors, setErrors }: {
         }}
         error={errors.state}
       />
+      <p className="text-xs text-gray-500"><span className="text-red-500">*</span> Campo obrigatório</p>
     </div>
   );
 }
@@ -321,6 +332,7 @@ function Step3({ data, updateData, errors, setErrors }: {
     <div className="space-y-4">
       <Input
         label="CPF"
+        showRequired
         placeholder="000.000.000-00"
         value={data.cpf}
         onChange={(e) => {
@@ -337,6 +349,7 @@ function Step3({ data, updateData, errors, setErrors }: {
       />
       <Select
         label="Gênero"
+        showRequired
         options={genders}
         value={data.gender}
         onChange={(e) => {
@@ -347,6 +360,7 @@ function Step3({ data, updateData, errors, setErrors }: {
       />
       <Input
         label="Celular"
+        showRequired
         placeholder="(00) 00000-0000"
         value={data.phone}
         onChange={(e) => {
@@ -363,6 +377,7 @@ function Step3({ data, updateData, errors, setErrors }: {
       />
       <Input
         label="Data de Nascimento"
+        showRequired
         placeholder="dd/mm/aaaa"
         value={data.birthDate}
         onChange={(e) => {
@@ -378,6 +393,7 @@ function Step3({ data, updateData, errors, setErrors }: {
           </svg>
         }
       />
+      <p className="text-xs text-gray-500"><span className="text-red-500">*</span> Campo obrigatório</p>
     </div>
   );
 }

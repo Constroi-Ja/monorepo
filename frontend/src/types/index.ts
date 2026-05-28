@@ -68,6 +68,8 @@ export interface CompanyProfile {
   display_radius_km: number;
   avg_minutes_per_km: number;
   onboarding_completed: boolean;
+  pix_key_type?: string;
+  pix_key?: string;
   logo_url?: string | null;
   rating_average: number;
   rating_count: number;
@@ -108,6 +110,8 @@ export interface CartItem {
     company_id: number;
     company_name: string;
     name: string;
+    marca?: string;
+    peso?: number | null;
     description: string;
     price: string;
     shipping_type: "leve" | "medio" | "meio-pesado" | "pesado";
@@ -116,6 +120,39 @@ export interface CartItem {
   };
   quantity: number;
   total: number;
+}
+
+export interface Order {
+  id: number;
+  buyer: number;
+  buyer_name: string;
+  company: number;
+  company_name: string;
+  status: "pendente" | "confirmado" | "enviado" | "entregue" | "cancelado";
+  status_display: string;
+  total_amount: string;
+  payment_status?: string | null;
+  items: OrderItemData[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderItemData {
+  id: number;
+  item: number;
+  item_name: string;
+  item_marca: string;
+  item_photo_url?: string | null;
+  quantity: number;
+  unit_price: string;
+}
+
+export interface OrderMessage {
+  id: number;
+  sender_name: string;
+  is_mine: boolean;
+  content: string;
+  created_at: string;
 }
 
 export interface Deliverer {

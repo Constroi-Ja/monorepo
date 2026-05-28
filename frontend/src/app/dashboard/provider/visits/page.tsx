@@ -149,7 +149,7 @@ export default function ProviderVisitsPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
       <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
         <Breadcrumb items={[{ label: "Painel", href: "/dashboard" }, { label: "Painel de Visitas" }]} />

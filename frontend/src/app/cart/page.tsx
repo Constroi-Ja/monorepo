@@ -72,7 +72,7 @@ export default function CartPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
       <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-2xl mx-auto">
@@ -116,6 +116,11 @@ export default function CartPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <h2 className="font-semibold text-gray-900 text-sm">{entry.item.name}</h2>
+                      {(entry.item.marca || entry.item.peso) && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {entry.item.marca}{entry.item.marca && entry.item.peso ? " · " : ""}{entry.item.peso ? `${entry.item.peso} kg` : ""}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-500 mt-0.5">{entry.item.company_name}</p>
                       <p className="text-xs text-gray-400 mt-0.5">R$ {Number(entry.item.price).toFixed(2)} / un</p>
                     </div>

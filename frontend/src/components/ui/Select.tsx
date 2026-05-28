@@ -5,15 +5,16 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'chi
   icon?: React.ReactNode;
   error?: string;
   options: { value: string; label: string }[];
+  showRequired?: boolean;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, icon, error, options, className = "", ...props }, ref) => {
+  ({ label, icon, error, options, showRequired, className = "", ...props }, ref) => {
     return (
       <div className="w-full">
         {label && (
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            {label}
+            {label}{showRequired && <span className="text-red-500 ml-0.5">*</span>}
           </label>
         )}
         <div className="relative">

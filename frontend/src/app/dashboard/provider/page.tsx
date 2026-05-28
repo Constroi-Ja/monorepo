@@ -2,30 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
-import { UpgradeModal } from "@/components/modals/UpgradeModal";
+import { ProviderPendingModal } from "@/components/modals/ProviderPendingModal";
 import { apiClient } from "@/lib/api-client";
 import Image from "next/image";
 import type { Store, TechnicalVisitRequest } from "@/types";
 
 export default function ProviderDashboardPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isAvailable, setIsAvailable] = useState(false);
   const [featuredStores, setFeaturedStores] = useState<Store[]>([]);
   const [pendingVisits, setPendingVisits] = useState<TechnicalVisitRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
-  useEffect(() => {
-    if (searchParams.get("upgrade") === "true") {
-      setShowUpgradeModal(true);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -98,7 +90,7 @@ export default function ProviderDashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={fullName} userInitial={fullName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={fullName} userInitial={fullName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
       <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
@@ -209,7 +201,7 @@ export default function ProviderDashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {featuredStores.map((store) => (
-                <div key={store.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+                <div key={store.id} onClick={() => router.push(`/stores/${store.id}`)} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
                   <div className="relative h-48 bg-gray-200">
                     {store.image_url ? (
                       <Image src={store.image_url} alt={store.company_name} width={400} height={192} className="w-full h-full object-cover" />
@@ -250,14 +242,9 @@ export default function ProviderDashboardPage() {
           </div>
         </div>
       </div>
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => {
-          setShowUpgradeModal(false);
-          router.replace("/dashboard/provider");
-        }}
-        userType="provider"
-      />
+      {user?.provider_profile?.verified === false && (
+        <ProviderPendingModal onLogout={() => { logout(); router.push("/login"); }} />
+      )}
     </div>
   );
 }

@@ -13,6 +13,9 @@ import Image from "next/image";
 interface Item {
   id: number;
   name: string;
+  marca: string;
+  peso?: number | null;
+  stock_count: number;
   description: string;
   price: string;
   shipping_type: "leve" | "medio" | "meio-pesado" | "pesado";
@@ -84,7 +87,7 @@ export default function CompanyItemsPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
       <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-5xl mx-auto">
@@ -150,6 +153,12 @@ export default function CompanyItemsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-900 text-sm">{item.name}</h3>
+                      {item.marca && (
+                        <span className="text-xs text-gray-400">{item.marca}</span>
+                      )}
+                      {item.peso && (
+                        <span className="text-xs text-gray-400">{item.peso} kg</span>
+                      )}
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${shippingTypeColors[item.shipping_type] ?? "bg-gray-100 text-gray-600"}`}>
                         {shippingTypeLabels[item.shipping_type] ?? item.shipping_type_display}
                       </span>
@@ -211,6 +220,8 @@ interface ItemEditModalProps {
 function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
   const [formData, setFormData] = useState({
     name: item?.name || "",
+    marca: item?.marca || "",
+    peso: item?.peso != null ? String(item.peso) : "",
     description: item?.description || "",
     price: item?.price || "",
     shipping_type: item?.shipping_type || "medio",
@@ -240,6 +251,8 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
     try {
       const fd = new FormData();
       fd.append("name", formData.name);
+      fd.append("marca", formData.marca);
+      if (formData.peso) fd.append("peso", formData.peso);
       fd.append("description", formData.description);
       fd.append("price", formData.price);
       fd.append("shipping_type", formData.shipping_type);
@@ -287,7 +300,7 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto<span className="text-red-500 ml-0.5">*</span></label>
             <input
               type="text"
               value={formData.name}
@@ -296,6 +309,31 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
               placeholder="Ex: Cimento CP II 50kg"
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+              <input
+                type="text"
+                value={formData.marca}
+                onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                placeholder="Ex: Votorantim"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.peso}
+                onChange={(e) => setFormData({ ...formData, peso: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                placeholder="Ex: 1.50"
+              />
+            </div>
           </div>
 
           <div>

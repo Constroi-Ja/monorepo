@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 interface SidebarProps {
   userName?: string;
   userInitial?: string;
+  userPhoto?: string;
 }
 
 interface NavItem {
@@ -88,12 +89,45 @@ function LogoutIcon() {
   );
 }
 
+function OrdersIcon() {
+  return (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+    </svg>
+  );
+}
+function ChartIcon() {
+  return (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    </svg>
+  );
+}
+function WalletIcon() {
+  return (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    </svg>
+  );
+}
+function WarehouseIcon() {
+  return (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+  );
+}
+
 function getNavItems(userType: string | null | undefined): NavItem[] {
   if (userType === "company") {
     return [
       { href: "/dashboard", label: "Painel", icon: <HomeIcon /> },
       { href: "/dashboard/company/items", label: "Conferir Itens", icon: <PackageIcon /> },
       { href: "/dashboard/company/deliveries", label: "Ger. Entregas", icon: <TruckIcon /> },
+      { href: "/dashboard/company/orders", label: "Pedidos", icon: <OrdersIcon /> },
+      { href: "/dashboard/company/inventory", label: "Estoque", icon: <WarehouseIcon /> },
+      { href: "/dashboard/company/revenue", label: "Recebimento", icon: <ChartIcon /> },
+      { href: "/dashboard/company/bills", label: "Contas a Pagar", icon: <WalletIcon /> },
       { href: "/settings", label: "Configurações", icon: <SettingsIcon /> },
     ];
   }
@@ -103,6 +137,7 @@ function getNavItems(userType: string | null | undefined): NavItem[] {
       { href: "/materials", label: "Comprar Material", icon: <ShoppingBagIcon /> },
       { href: "/providers", label: "Prestadores", icon: <UsersIcon /> },
       { href: "/minhas-visitas", label: "Minhas Visitas", icon: <CalendarIcon /> },
+      { href: "/my-orders", label: "Minhas Compras", icon: <OrdersIcon /> },
       { href: "/cart", label: "Carrinho", icon: <CartIcon /> },
       { href: "/settings", label: "Configurações", icon: <SettingsIcon /> },
     ];
@@ -112,6 +147,7 @@ function getNavItems(userType: string | null | undefined): NavItem[] {
       { href: "/dashboard", label: "Painel", icon: <HomeIcon /> },
       { href: "/materials", label: "Comprar Material", icon: <ShoppingBagIcon /> },
       { href: "/dashboard/provider/visits", label: "Painel de Visitas", icon: <CalendarIcon /> },
+      { href: "/my-orders", label: "Minhas Compras", icon: <OrdersIcon /> },
       { href: "/cart", label: "Carrinho", icon: <CartIcon /> },
       { href: "/settings", label: "Configurações", icon: <SettingsIcon /> },
     ];
@@ -131,7 +167,7 @@ function getNavItems(userType: string | null | undefined): NavItem[] {
   ];
 }
 
-export function Sidebar({ userName, userInitial }: SidebarProps) {
+export function Sidebar({ userName, userInitial, userPhoto }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { logout, user } = useAuth();
@@ -249,9 +285,17 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
         {/* User Info */}
         <div className={`px-4 py-4 border-b border-gray-800 ${isCollapsed ? "flex justify-center" : ""}`}>
           <div className={`flex items-center ${isCollapsed ? "" : "gap-3"}`}>
-            <div className="w-9 h-9 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 text-sm font-bold flex-shrink-0">
-              {userInitial || userName?.charAt(0).toUpperCase() || "U"}
-            </div>
+            {userPhoto ? (
+              <img
+                src={userPhoto}
+                alt={userName || "Perfil"}
+                className="w-9 h-9 rounded-full object-cover border border-orange-500/40 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 text-sm font-bold flex-shrink-0">
+                {userInitial || userName?.charAt(0).toUpperCase() || "U"}
+              </div>
+            )}
             {!isCollapsed && (
               <div className="min-w-0">
                 <p className="text-white text-sm font-medium truncate">{userName?.split(" ")[0] || "Usuário"}</p>
@@ -277,23 +321,6 @@ export function Sidebar({ userName, userInitial }: SidebarProps) {
             </Link>
           ))}
 
-          {/* Upgrade button */}
-          {user?.user_type !== "admin" && (
-            <div className="mt-2 pt-2 border-t border-gray-800">
-              <Link
-                href="/settings?tab=plan"
-                className={[
-                  "flex items-center px-3 py-2.5 rounded-lg transition-all mb-1",
-                  isCollapsed ? "justify-center" : "gap-3",
-                  "text-orange-400 hover:bg-orange-500/10 border border-orange-500/20 hover:border-orange-500/40",
-                ].join(" ")}
-                title={isCollapsed ? "Atualizar Plano" : undefined}
-              >
-                <StarIcon />
-                {!isCollapsed && <span className="text-sm font-medium">Atualizar Plano</span>}
-              </Link>
-            </div>
-          )}
         </nav>
 
         {/* Logout */}

@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
+import { ProviderDetailModal } from "@/components/modals/ProviderDetailModal";
 import { apiClient } from "@/lib/api-client";
 import type { Store, Provider } from "@/types";
 
@@ -19,6 +20,7 @@ export default function ConsumerDashboardPage() {
   const [nearbyProviders, setNearbyProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
 
   useEffect(() => {
     if (searchParams.get("upgrade") === "true") {
@@ -85,7 +87,7 @@ export default function ConsumerDashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userName={fullName} userInitial={fullName?.charAt(0).toUpperCase()} />
+      <Sidebar userName={fullName} userInitial={fullName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
       <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
@@ -175,7 +177,7 @@ export default function ConsumerDashboardPage() {
               {featuredStores.map((store) => (
                 <div
                   key={store.id}
-                  onClick={() => router.push("/materials")}
+                  onClick={() => router.push(`/stores/${store.id}`)}
                   className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                 >
                   <div className="relative h-48 bg-gray-200">
@@ -250,7 +252,7 @@ export default function ConsumerDashboardPage() {
               {nearbyProviders.map((provider) => (
                 <div
                   key={provider.id}
-                  onClick={() => router.push("/providers")}
+                  onClick={() => setSelectedProvider(provider)}
                   className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                 >
                   <div className="relative h-48 bg-gray-200">
@@ -299,6 +301,16 @@ export default function ConsumerDashboardPage() {
         }}
         userType="consumer"
       />
+      {selectedProvider && (
+        <ProviderDetailModal
+          provider={selectedProvider}
+          onClose={() => setSelectedProvider(null)}
+          onRequest={(id) => {
+            setSelectedProvider(null);
+            router.push(`/providers?provider_id=${id}`);
+          }}
+        />
+      )}
     </div>
   );
 }
