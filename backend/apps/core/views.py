@@ -198,7 +198,7 @@ def featured_stores(request):
     elif hasattr(user, "provider_profile"):
         user_cep = user.provider_profile.cep
 
-    companies = Company.objects.all()
+    companies = Company.objects.all().select_related("user")
     stores = []
     for company in companies:
         distance = estimate_distance_km(user_cep, company.cep)
@@ -206,6 +206,17 @@ def featured_stores(request):
             continue
         avg_minutes_per_km = float(company.avg_minutes_per_km or 4)
         eta_minutes = max(5, int(round(distance * avg_minutes_per_km)))
+        image_url = None
+        if company.logo:
+            try:
+                image_url = company.logo.url
+            except Exception:
+                pass
+        elif company.user.profile_photo:
+            try:
+                image_url = company.user.profile_photo.url
+            except Exception:
+                pass
         stores.append(
             {
                 "id": company.id,
@@ -218,7 +229,7 @@ def featured_stores(request):
                 "opening_time": company.opening_time.strftime("%H:%M") if company.opening_time else None,
                 "closing_time": company.closing_time.strftime("%H:%M") if company.closing_time else None,
                 "eta_minutes": eta_minutes,
-                "image_url": None,
+                "image_url": image_url,
             }
         )
 
@@ -231,7 +242,7 @@ def featured_stores(request):
 def nearby_providers(request):
     """Get nearby providers - only available and verified providers."""
     user_cep = request.user.consumer_profile.cep if hasattr(request.user, "consumer_profile") else ""
-    providers = Provider.objects.filter(is_available=True)
+    providers = Provider.objects.filter(is_available=True).select_related("user")
 
     provider_list = []
     for provider in providers:
@@ -239,6 +250,12 @@ def nearby_providers(request):
         if float(provider.coverage_radius_km or 50) < distance:
             continue
         eta_minutes = max(5, int(round(distance * 5.0)))
+        image_url = None
+        if provider.user.profile_photo:
+            try:
+                image_url = provider.user.profile_photo.url
+            except Exception:
+                pass
         provider_list.append(
             {
                 "id": provider.user_id,
@@ -251,7 +268,7 @@ def nearby_providers(request):
                 "is_available": provider.is_available,
                 "verified": provider.verified,
                 "coverage_radius_km": float(provider.coverage_radius_km or 50),
-                "image_url": None,
+                "image_url": image_url,
             }
         )
 
@@ -268,10 +285,21 @@ def stores_for_provider(request):
 
     user_cep = request.user.provider_profile.cep
     stores = []
-    for company in Company.objects.all():
+    for company in Company.objects.all().select_related("user"):
         distance = estimate_distance_km(user_cep, company.cep)
         if distance > float(company.display_radius_km):
             continue
+        image_url = None
+        if company.logo:
+            try:
+                image_url = company.logo.url
+            except Exception:
+                pass
+        elif company.user.profile_photo:
+            try:
+                image_url = company.user.profile_photo.url
+            except Exception:
+                pass
         stores.append(
             {
                 "id": company.id,
@@ -282,7 +310,7 @@ def stores_for_provider(request):
                 "rating_count": company.rating_count,
                 "is_open": is_company_open(company),
                 "eta_minutes": max(5, int(round(distance * float(company.avg_minutes_per_km or 4)))),
-                "image_url": None,
+                "image_url": image_url,
             }
         )
     stores.sort(key=lambda x: (not x["is_open"], x["distance"]))
