@@ -263,7 +263,7 @@ export default function CompanyOrdersPage() {
     setLoadingOrders(true);
     setError(null);
     try {
-      const response = await apiClient.get<Order[]>("/core/orders/company/");
+      const response = await apiClient.get<Order[]>("/orders/company/");
       const data = response.data as unknown as Order[] | { results: Order[] };
       setOrders(Array.isArray(data) ? data : (data?.results ?? []));
     } catch (err) {
@@ -278,7 +278,7 @@ export default function CompanyOrdersPage() {
     setAdvancingId(orderId);
     try {
       const response = await apiClient.patch<Order>(
-        `/core/orders/${orderId}/status/`,
+        `/orders/${orderId}/status/`,
         { status: nextStatus }
       );
       const updated = response.data as unknown as Order;
