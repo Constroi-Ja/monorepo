@@ -212,7 +212,7 @@ export default function CompanyRevenuePage() {
     setError(null);
     try {
       const response = await apiClient.get<StatsData>(
-        `/core/orders/stats/?period=${period}`
+        `/orders/stats/?period=${period}`
       );
       setStats(response.data as unknown as StatsData);
     } catch (err) {
