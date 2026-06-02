@@ -70,6 +70,7 @@ export default function MaterialsPage() {
   // Cart feedback
   const [addingItemId, setAddingItemId] = useState<number | null>(null);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
+  const [cartFeedbackIsError, setCartFeedbackIsError] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
@@ -157,15 +158,16 @@ export default function MaterialsPage() {
 
   const addItemToCart = async (itemId: number) => {
     setAddingItemId(itemId);
-    try {
-      await apiClient.post("/cart/", { item_id: itemId, quantity: 1 });
+    const r = await apiClient.post("/cart/", { item_id: itemId, quantity: 1 });
+    if (r.error) {
+      setCartFeedbackIsError(true);
+      setCartFeedback((r.error as any).message || "Erro ao adicionar item.");
+    } else {
+      setCartFeedbackIsError(false);
       setCartFeedback("Item adicionado ao carrinho!");
-    } catch {
-      setCartFeedback("Erro ao adicionar item.");
-    } finally {
-      setAddingItemId(null);
-      setTimeout(() => setCartFeedback(null), 2500);
     }
+    setAddingItemId(null);
+    setTimeout(() => { setCartFeedback(null); setCartFeedbackIsError(false); }, 3000);
   };
 
   // ─── Guards ───────────────────────────────────────────────────────────────
@@ -264,7 +266,7 @@ export default function MaterialsPage() {
           {cartFeedback && (
             <div
               className={`mb-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
-                cartFeedback.startsWith("Erro")
+                cartFeedbackIsError
                   ? "bg-red-50 text-red-700 border border-red-200"
                   : "bg-green-50 text-green-700 border border-green-200"
               }`}
@@ -274,7 +276,7 @@ export default function MaterialsPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d={cartFeedback.startsWith("Erro") ? "M6 18L18 6M6 6l12 12" : "M5 13l4 4L19 7"}
+                  d={cartFeedbackIsError ? "M6 18L18 6M6 6l12 12" : "M5 13l4 4L19 7"}
                 />
               </svg>
               {cartFeedback}

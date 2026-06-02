@@ -55,7 +55,7 @@ export default function MyOrdersPage() {
     if (user.user_type !== "consumer" && user.user_type !== "provider") return;
 
     apiClient
-      .get<Order[]>("/core/orders/my/")
+      .get<Order[]>("/orders/my/")
       .then((r) => setOrders(Array.isArray(r.data) ? r.data : []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
