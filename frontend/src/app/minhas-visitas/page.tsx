@@ -33,19 +33,31 @@ export default function MinhasVisitasPage() {
   const router = useRouter();
   const [visits, setVisits] = useState<TechnicalVisitRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
 
-  useEffect(() => {
+  const fetchVisits = () => {
     if (!user || user.user_type !== "consumer") return;
     apiClient
       .get<TechnicalVisitRequest[]>("/technical-visits/my/")
       .then((r) => setVisits(Array.isArray(r.data) ? r.data : []))
       .catch(() => setVisits([]))
       .finally(() => setLoading(false));
-  }, [user]);
+  };
+
+  useEffect(() => { fetchVisits(); }, [user]);
+
+  const handleCancelVisit = async (e: React.MouseEvent, visitId: number) => {
+    e.stopPropagation();
+    if (!confirm("Cancelar esta visita técnica?")) return;
+    setCancellingId(visitId);
+    const r = await apiClient.post(`/technical-visits/${visitId}/cancel/`, {});
+    if (!r.error) setVisits((prev) => prev.map((v) => v.id === visitId ? { ...v, status: "cancelled" } : v));
+    setCancellingId(null);
+  };
 
   if (authLoading || loading) return <LoadingScreen />;
   if (!user) return null;
@@ -95,43 +107,59 @@ export default function MinhasVisitasPage() {
           ) : (
             <div className="space-y-3">
               {visits.map((visit) => (
-                <button
+                <div
                   key={visit.id}
-                  onClick={() => router.push(`/visitas/${visit.id}`)}
-                  className="w-full text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:border-orange-200 hover:shadow-md transition-all"
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:border-orange-200 hover:shadow-md transition-all"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm">{visit.provider_name}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">{visit.address}</p>
-                      {visit.notes && (
-                        <p className="text-xs text-gray-400 mt-1 line-clamp-1">{visit.notes}</p>
-                      )}
-                      <p className="text-xs text-gray-400 mt-2">
-                        {new Date(visit.created_at).toLocaleDateString("pt-BR", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLOR[visit.status]}`}>
-                        {STATUS_LABEL[visit.status]}
-                      </span>
-                      {visit.status === "accepted" && visit.estimated_eta_minutes && (
-                        <span className="text-xs text-green-600 font-medium">
-                          ~{visit.estimated_eta_minutes} min
+                  <button
+                    onClick={() => router.push(`/visitas/${visit.id}`)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm">{visit.provider_name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">{visit.address}</p>
+                        {visit.notes && (
+                          <p className="text-xs text-gray-400 mt-1 line-clamp-1">{visit.notes}</p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-2">
+                          {new Date(visit.created_at).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLOR[visit.status]}`}>
+                          {STATUS_LABEL[visit.status]}
                         </span>
-                      )}
-                      <svg className="w-4 h-4 text-gray-300 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                        {visit.status === "accepted" && visit.estimated_eta_minutes && (
+                          <span className="text-xs text-green-600 font-medium">
+                            ~{visit.estimated_eta_minutes} min
+                          </span>
+                        )}
+                        <svg className="w-4 h-4 text-gray-300 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                  {visit.status === "awaiting_payment" && (
+                    <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
+                      <p className="text-xs text-yellow-700">Pagamento PIX pendente</p>
+                      <button
+                        onClick={(e) => handleCancelVisit(e, visit.id)}
+                        disabled={cancellingId === visit.id}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                      >
+                        {cancellingId === visit.id ? "Cancelando..." : "Cancelar visita"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}

@@ -11,7 +11,6 @@ import { apiClient } from "@/lib/api-client";
 import type { CreateVisitResponse, Provider } from "@/types";
 
 type ModalStep = "details" | "paying" | "awaiting_pix";
-type PayMethod = "pix" | "credit_card";
 
 function normalizeSpecialties(raw: string[]): string[] {
   return raw.flatMap((s) => {
@@ -31,12 +30,6 @@ interface PayerForm {
   cpf: string;
 }
 
-interface CardForm {
-  token: string;
-  payment_method_id: string;
-  installments: number;
-}
-
 export default function ProvidersPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -48,11 +41,9 @@ export default function ProvidersPage() {
   // Modal state
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>("details");
-  const [payMethod, setPayMethod] = useState<PayMethod>("pix");
   const [notes, setNotes] = useState("");
   const [address, setAddress] = useState("");
   const [payer, setPayer] = useState<PayerForm>({ email: "", first_name: "", last_name: "", cpf: "" });
-  const [card, setCard] = useState<CardForm>({ token: "", payment_method_id: "visa", installments: 1 });
   const [processing, setProcessing] = useState(false);
   const [modalError, setModalError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -88,7 +79,7 @@ export default function ProvidersPage() {
     if (found) {
       setSelectedProvider(found);
       setModalStep("details");
-      setPayMethod("pix");
+
       setNotes("");
       setModalError("");
       setPixData(null);
@@ -148,21 +139,17 @@ export default function ProvidersPage() {
     setProcessing(true);
     setModalError("");
 
-    const basePayload = {
+    const payload = {
       provider: selectedProvider.id,
       address,
       notes,
       preferred_date: null,
-      payment_method: payMethod,
+      payment_method: "pix",
       payer_email: payer.email,
       payer_first_name: payer.first_name,
       payer_last_name: payer.last_name,
       payer_cpf: payer.cpf.replace(/\D/g, ""),
     };
-
-    const payload = payMethod === "credit_card"
-      ? { ...basePayload, token: card.token, payment_method_id: card.payment_method_id, installments: card.installments }
-      : basePayload;
 
     try {
       const r = await apiClient.post<CreateVisitResponse>("/technical-visits/", payload);
@@ -170,23 +157,13 @@ export default function ProvidersPage() {
       if (!r.data) throw new Error("Resposta inválida do servidor.");
       const { visit, payment } = r.data;
       setVisitId(visit.id);
-
-      if (payMethod === "pix") {
-        setPixData({
-          payment_id: payment.payment_id,
-          mp_payment_id: (payment as any).mp_payment_id,
-          qr_code_base64: payment.qr_code_base64 || "",
-          qr_code_text: payment.qr_code_text || "",
-        });
-        setModalStep("awaiting_pix");
-      } else {
-        // Card: approved synchronously or pending
-        if (payment.status === "approved") {
-          router.push(`/visitas/${visit.id}`);
-        } else {
-          setModalError("Pagamento não aprovado. Verifique os dados do cartão.");
-        }
-      }
+      setPixData({
+        payment_id: payment.payment_id,
+        mp_payment_id: (payment as any).mp_payment_id,
+        qr_code_base64: payment.qr_code_base64 || "",
+        qr_code_text: payment.qr_code_text || "",
+      });
+      setModalStep("awaiting_pix");
     } catch (e: unknown) {
       const err = e as { message?: string };
       setModalError(err?.message || "Erro ao processar. Tente novamente.");
@@ -272,10 +249,14 @@ export default function ProvidersPage() {
                   key={provider.id}
                   className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:border-orange-200 hover:shadow-md transition-all"
                 >
-                  <div className="h-28 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                    <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                  <div className="h-28 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden">
+                    {provider.image_url ? (
+                      <img src={provider.image_url} alt={provider.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    )}
                   </div>
                   <div className="p-4">
                     <h2 className="font-semibold text-gray-900 text-sm leading-tight">{provider.full_name}</h2>
@@ -359,36 +340,6 @@ export default function ProvidersPage() {
                     />
                   </div>
 
-                  {/* Payment method */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-2">Método de pagamento</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["pix", "credit_card"] as PayMethod[]).map((m) => (
-                        <button
-                          key={m}
-                          onClick={() => setPayMethod(m)}
-                          className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-colors ${payMethod === m ? "border-orange-500 bg-orange-50" : "border-gray-200 hover:border-orange-200"}`}
-                        >
-                          {m === "pix" ? (
-                            <>
-                              <svg className={`w-6 h-6 ${payMethod === "pix" ? "text-orange-500" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                              </svg>
-                              <span className={`text-xs font-medium ${payMethod === "pix" ? "text-orange-500" : "text-gray-500"}`}>PIX</span>
-                            </>
-                          ) : (
-                            <>
-                              <svg className={`w-6 h-6 ${payMethod === "credit_card" ? "text-orange-500" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                              </svg>
-                              <span className={`text-xs font-medium ${payMethod === "credit_card" ? "text-orange-500" : "text-gray-500"}`}>Cartão</span>
-                            </>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Payer info */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-2">Dados do pagador</label>
@@ -413,59 +364,12 @@ export default function ProvidersPage() {
                     </div>
                   </div>
 
-                  {/* Card fields */}
-                  {payMethod === "credit_card" && (
-                    <div className="border border-gray-200 rounded-xl p-3 space-y-2">
-                      <p className="text-xs text-blue-700 bg-blue-50 rounded-lg p-2">
-                        Token gerado pelo SDK Mercado Pago (Checkout Bricks em produção).
-                      </p>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Token do cartão</label>
-                        <input
-                          type="text"
-                          placeholder="Token MP.js"
-                          value={card.token}
-                          onChange={(e) => setCard((prev) => ({ ...prev, token: e.target.value }))}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Bandeira</label>
-                          <select
-                            value={card.payment_method_id}
-                            onChange={(e) => setCard((prev) => ({ ...prev, payment_method_id: e.target.value }))}
-                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
-                          >
-                            <option value="visa">Visa</option>
-                            <option value="master">Mastercard</option>
-                            <option value="elo">Elo</option>
-                            <option value="amex">Amex</option>
-                            <option value="hipercard">Hipercard</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Parcelas</label>
-                          <select
-                            value={card.installments}
-                            onChange={(e) => setCard((prev) => ({ ...prev, installments: Number(e.target.value) }))}
-                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
-                          >
-                            {[1, 2, 3, 4, 6, 12].map((n) => (
-                              <option key={n} value={n}>{n}x {n === 1 ? "(sem juros)" : `de R$ ${(80 / n).toFixed(2)}`}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   <button
                     onClick={handlePay}
                     disabled={processing || !address.trim()}
                     className="w-full py-3 bg-orange-500 text-white rounded-xl font-semibold text-sm hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                   >
-                    {processing ? "Processando..." : payMethod === "pix" ? "Gerar PIX · R$80,00" : "Pagar R$80,00"}
+                    {processing ? "Processando..." : "Gerar PIX · R$80,00"}
                   </button>
                 </>
               )}

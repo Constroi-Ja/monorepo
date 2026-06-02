@@ -421,10 +421,14 @@ function StoreCard({ store, selected, loading, onSelect, onNavigate }: StoreCard
         selected ? "border-orange-400 ring-2 ring-orange-200" : "border-gray-100"
       }`}
     >
-      <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
-        <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
+      <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
+        {store.image_url ? (
+          <img src={store.image_url} alt={store.company_name} className="w-full h-full object-cover" />
+        ) : (
+          <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        )}
         <span
           className={`absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full ${
             store.is_open ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"

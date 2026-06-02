@@ -43,6 +43,7 @@ export default function MyOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<StatusFilter>("todos");
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -72,6 +73,14 @@ export default function MyOrdersPage() {
     user.username;
 
   const userInitial = userName?.charAt(0).toUpperCase() ?? "U";
+
+  const handleCancelOrder = async (orderId: number) => {
+    if (!confirm("Cancelar este pedido?")) return;
+    setCancellingId(orderId);
+    const r = await apiClient.patch(`/orders/${orderId}/status/`, { status: "cancelado" });
+    if (!r.error) setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelado" } : o));
+    setCancellingId(null);
+  };
 
   const filteredOrders =
     activeFilter === "todos"
@@ -179,6 +188,15 @@ export default function MyOrdersPage() {
                   >
                     Ver detalhes
                   </button>
+                  {order.status === "pendente" && (
+                    <button
+                      onClick={() => handleCancelOrder(order.id)}
+                      disabled={cancellingId === order.id}
+                      className="w-full text-center text-red-600 hover:bg-red-50 border border-red-200 transition-colors rounded-xl py-2 text-sm font-medium disabled:opacity-50"
+                    >
+                      {cancellingId === order.id ? "Cancelando..." : "Cancelar pedido"}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
