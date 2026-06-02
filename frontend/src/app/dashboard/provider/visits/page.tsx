@@ -67,7 +67,7 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: "bg-red-50 text-red-400",
 };
 
-const GROUPS = ["pending", "accepted", "awaiting_payment", "completed", "refused", "cancelled"];
+const GROUPS = ["pending", "accepted", "completed", "refused", "cancelled"];
 
 export default function ProviderVisitsPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
