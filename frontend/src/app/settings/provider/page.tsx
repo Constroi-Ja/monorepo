@@ -51,6 +51,19 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "seguranca", label: "Segurança" },
 ];
 
+// Handles old DB records where specialties was stored as ['["encanador"]'] (JSON-stringified)
+function normalizeSpecialties(raw: string[] | null | undefined): string[] {
+  if (!raw || raw.length === 0) return [];
+  return raw.flatMap((s) => {
+    try {
+      const parsed = JSON.parse(s);
+      return Array.isArray(parsed) ? parsed : [s];
+    } catch {
+      return [s];
+    }
+  });
+}
+
 export default function ProviderSettingsPage() {
   const { user, loading: authLoading, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
@@ -90,7 +103,7 @@ export default function ProviderSettingsPage() {
         gender: p.gender || "",
         phone: p.phone || "",
         birth_date: (p as any).birth_date || "",
-        specialties: p.specialties || [],
+        specialties: normalizeSpecialties(p.specialties),
         cep: p.cep || "",
         street: p.street || "",
         number: p.number || "",
