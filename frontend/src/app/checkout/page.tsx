@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -56,6 +56,8 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [pixResult, setPixResult] = useState<PixResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [payer, setPayer] = useState({
     email: "", first_name: "", last_name: "", cpf: "",
@@ -89,6 +91,25 @@ export default function CheckoutPage() {
 
   const total = useMemo(() => cart.reduce((acc, i) => acc + Number(i.total || 0), 0), [cart]);
 
+  useEffect(() => {
+    if (step !== "success" || !pixResult || paymentConfirmed) return;
+    pollingRef.current = setInterval(async () => {
+      try {
+        const r = await apiClient.get<{ status: string }>(`/payments/${pixResult.payment_id}/`);
+        if (r.data?.status === "approved") {
+          clearInterval(pollingRef.current!);
+          pollingRef.current = null;
+          setPaymentConfirmed(true);
+        }
+      } catch {
+        // silent — keep polling
+      }
+    }, 5000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [step, pixResult, paymentConfirmed]);
+
   const handlePixPayment = async () => {
     setProcessing(true);
     setError("");
@@ -105,11 +126,8 @@ export default function CheckoutPage() {
         setPixResult({ ...r.data.payment, order_id: r.data.order?.id });
         setStep("success");
       } else {
-        setError("Erro ao gerar PIX. Tente novamente.");
+        setError((r.error as any)?.message || "Erro ao gerar PIX. Tente novamente.");
       }
-    } catch (e: any) {
-      const detail = e?.response?.data?.error || e?.message || "Erro ao processar pagamento.";
-      setError(detail);
     } finally {
       setProcessing(false);
     }
@@ -135,6 +153,40 @@ export default function CheckoutPage() {
 
   // ── Success screen ──
   if (step === "success" && pixResult) {
+    if (paymentConfirmed) {
+      return (
+        <div className="flex min-h-screen bg-gray-50">
+          <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
+          <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 flex items-center justify-center">
+            <div className="max-w-md w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Pagamento confirmado!</h2>
+              <p className="text-gray-500 text-sm mb-2">
+                R$ {Number(pixResult.amount).toFixed(2)} recebido com sucesso.
+              </p>
+              <p className="text-gray-400 text-xs mb-8">Seu pedido foi confirmado e está sendo processado.</p>
+              <button
+                onClick={() => router.push(pixResult.order_id ? `/my-orders/${pixResult.order_id}` : "/my-orders")}
+                className="w-full py-3 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors mb-2"
+              >
+                Ver meu pedido
+              </button>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="text-sm text-gray-500 hover:text-gray-700 underline"
+              >
+                Ir para o painel
+              </button>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
@@ -174,10 +226,16 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            <p className="text-xs text-gray-400 mb-4">O pagamento será confirmado automaticamente após o PIX ser processado.</p>
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mb-4">
+              <span className="inline-block w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+              Aguardando pagamento...
+            </div>
 
             {process.env.NEXT_PUBLIC_TEST_MODE === "true" && pixResult.payment_id && (
-              <SimulateApproveButton paymentId={pixResult.mp_payment_id || String(pixResult.payment_id)} onSuccess={() => { router.refresh(); router.push("/my-orders"); }} />
+              <SimulateApproveButton
+                paymentId={pixResult.mp_payment_id || String(pixResult.payment_id)}
+                onSuccess={() => setPaymentConfirmed(true)}
+              />
             )}
 
             <button
