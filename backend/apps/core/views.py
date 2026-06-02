@@ -347,6 +347,24 @@ class CartItemListCreateView(generics.ListCreateAPIView):
         context["request"] = self.request
         return context
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        item = serializer.validated_data["item"]
+        if hasattr(item.company, "company_profile"):
+            company = item.company.company_profile
+            if not is_company_open(company):
+                hours = ""
+                if company.opening_time and company.closing_time:
+                    hours = f" (funciona das {company.opening_time.strftime('%H:%M')} às {company.closing_time.strftime('%H:%M')})"
+                return Response(
+                    {"error": f"A loja está fechada no momento{hours}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class CartItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
@@ -422,7 +440,7 @@ def create_technical_visit(request):
     sdk = _mp_sdk()
     payment_method = data["payment_method"]
     external_ref = f"visit_{visit.id}"
-    amount = 0.10
+    amount = 0.01
     description = "Visita técnica"
 
     try:
@@ -885,6 +903,17 @@ def create_order(request):
 
     company_user_id = companies.pop()
     company_user = User.objects.get(id=company_user_id)
+
+    if hasattr(company_user, "company_profile") and not is_company_open(company_user.company_profile):
+        company = company_user.company_profile
+        hours = ""
+        if company.opening_time and company.closing_time:
+            hours = f" (funciona das {company.opening_time.strftime('%H:%M')} às {company.closing_time.strftime('%H:%M')})"
+        return Response(
+            {"error": f"A loja está fechada no momento{hours}. Tente novamente no horário de funcionamento."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     total = sum(float(item.price) * qty for item, qty in items_objs)
 
     order = Order.objects.create(buyer=request.user, company=company_user, total_amount=total)
@@ -893,7 +922,10 @@ def create_order(request):
 
     sdk = _mp_sdk()
     external_ref = f"order_{order.id}"
-    cpf = _clean_cpf(data["payer_cpf"]) or "00000000000"
+    cpf = _clean_cpf(data["payer_cpf"])
+    if not cpf or len(cpf) != 11:
+        order.delete()
+        return Response({"error": "CPF inválido."}, status=status.HTTP_400_BAD_REQUEST)
     mp_payload = {
         "transaction_amount": float(total),
         "description": f"Pedido #{order.id}",
@@ -903,6 +935,7 @@ def create_order(request):
             "email": data["payer_email"],
             "first_name": data["payer_first_name"],
             "last_name": data["payer_last_name"],
+            "entity_type": "individual",
             "identification": {"type": "CPF", "number": cpf},
         },
     }
@@ -911,9 +944,17 @@ def create_order(request):
         result = sdk.payment().create(mp_payload)
         response_data = result.get("response", {})
         if result.get("status") not in (200, 201):
-            logger.error("MP PIX order error: %s", response_data)
+            cause = response_data.get("cause", []) or []
+            cause_desc = ", ".join(
+                c.get("description", "") for c in cause
+                if c.get("description") and str(c.get("description")).lower() not in ("null", "none", "")
+            )
+            raw_msg = (response_data.get("message") or response_data.get("error") or "Erro desconhecido")
+            mp_msg = raw_msg.replace("null", "").strip()
+            if cause_desc:
+                mp_msg = f"{mp_msg} ({cause_desc})"
+            logger.error("MP PIX order error status=%s body=%s", result.get("status"), response_data)
             order.delete()
-            mp_msg = response_data.get("message") or response_data.get("error") or "Erro desconhecido"
             return Response({"error": f"Erro ao gerar PIX: {mp_msg}"}, status=status.HTTP_502_BAD_GATEWAY)
 
         tx = response_data.get("point_of_interaction", {}).get("transaction_data", {})

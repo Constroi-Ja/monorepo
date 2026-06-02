@@ -71,6 +71,7 @@ class CreatePixPaymentView(APIView):
                 "email": data["payer_email"],
                 "first_name": data["payer_first_name"],
                 "last_name": data["payer_last_name"],
+                "entity_type": "individual",
                 "identification": {
                     "type": "CPF",
                     "number": _clean_cpf(data["payer_cpf"]),
@@ -82,9 +83,11 @@ class CreatePixPaymentView(APIView):
         response_data = result.get("response", {})
 
         if result.get("status") not in (200, 201):
-            logger.error("MP PIX error: %s", response_data)
+            cause = response_data.get("cause", [])
+            cause_desc = ", ".join(c.get("description", "") for c in cause) if cause else ""
+            logger.error("MP PIX error status=%s body=%s", result.get("status"), response_data)
             return Response(
-                {"detail": "Erro ao criar pagamento PIX", "mp_error": response_data},
+                {"detail": "Erro ao criar pagamento PIX", "mp_error": response_data, "cause": cause_desc},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -210,6 +213,12 @@ class PaymentStatusView(generics.RetrieveAPIView):
                 if new_status != order.status:
                     order.status = new_status
                     order.save(update_fields=["status", "updated_at"])
+                    if new_status == PaymentOrder.Status.APPROVED:
+                        from apps.core.models import TechnicalVisitRequest, Order as CoreOrder
+                        CoreOrder.objects.filter(payment=order, status="pendente").update(status="confirmado")
+                        TechnicalVisitRequest.objects.filter(
+                            payment_order=order, status="awaiting_payment"
+                        ).update(status="pending")
 
         return Response(PaymentOrderSerializer(order).data)
 

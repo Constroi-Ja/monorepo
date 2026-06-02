@@ -31,6 +31,7 @@ class ProviderSerializer(serializers.ModelSerializer):
     """Provider profile serializer."""
 
     criminal_record_url = serializers.SerializerMethodField()
+    specialties = serializers.ListField(child=serializers.CharField(), required=False)
 
     def get_criminal_record_url(self, obj):
         if obj.criminal_record:
