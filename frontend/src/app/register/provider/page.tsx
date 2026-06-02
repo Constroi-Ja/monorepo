@@ -590,7 +590,7 @@ export default function ProviderRegisterPage() {
       formDataToSend.append("password", formData.password);
       formDataToSend.append("confirm_password", formData.confirmPassword);
       formDataToSend.append("full_name", formData.fullName);
-      formDataToSend.append("specialties", JSON.stringify(formData.specialties));
+      formData.specialties.forEach((s) => formDataToSend.append("specialties", s));
       if (formData.criminalRecord) {
         formDataToSend.append("criminal_record", formData.criminalRecord);
       }
