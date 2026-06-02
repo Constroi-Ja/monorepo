@@ -1018,6 +1018,7 @@ def company_orders(request):
         return Response({"error": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
     orders = (
         Order.objects.filter(company=request.user)
+        .exclude(status="pendente")  # exclude orders that haven't been paid yet
         .select_related("payment", "buyer__consumer_profile", "buyer__provider_profile")
         .prefetch_related("items__item")
         .order_by("-created_at")
@@ -1057,7 +1058,7 @@ def update_order_status(request, order_id: int):
     if user.user_type == "company" and order.company_id == user.id:
         allowed = {"pendente": "confirmado", "confirmado": "enviado"}
     elif order.buyer_id == user.id:
-        allowed = {"enviado": "entregue"}
+        allowed = {"enviado": "entregue", "pendente": "cancelado"}
     else:
         return Response({"error": "Sem permissão."}, status=status.HTTP_403_FORBIDDEN)
 
@@ -1069,6 +1070,11 @@ def update_order_status(request, order_id: int):
 
     order.status = new_status
     order.save(update_fields=["status", "updated_at"])
+
+    # When buyer cancels an unpaid order, also cancel the associated payment
+    if new_status == "cancelado" and order.payment_id:
+        _refund_payment_order(order.payment)
+
     return Response(OrderSerializer(order, context={"request": request}).data)
 
 
