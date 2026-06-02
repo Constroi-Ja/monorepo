@@ -13,6 +13,17 @@ import type { CreateVisitResponse, Provider } from "@/types";
 type ModalStep = "details" | "paying" | "awaiting_pix";
 type PayMethod = "pix" | "credit_card";
 
+function normalizeSpecialties(raw: string[]): string[] {
+  return raw.flatMap((s) => {
+    try {
+      const parsed = JSON.parse(s);
+      return Array.isArray(parsed) ? parsed : [s];
+    } catch {
+      return [s];
+    }
+  });
+}
+
 interface PayerForm {
   email: string;
   first_name: string;
@@ -190,7 +201,7 @@ export default function ProvidersPage() {
     return providers.filter(
       (p) =>
         p.full_name.toLowerCase().includes(term) ||
-        p.specialties.join(", ").toLowerCase().includes(term)
+        normalizeSpecialties(p.specialties).join(", ").toLowerCase().includes(term)
     );
   }, [search, providers]);
 
@@ -268,7 +279,7 @@ export default function ProvidersPage() {
                   </div>
                   <div className="p-4">
                     <h2 className="font-semibold text-gray-900 text-sm leading-tight">{provider.full_name}</h2>
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{provider.specialties.join(", ")}</p>
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{normalizeSpecialties(provider.specialties).join(", ")}</p>
                     <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
                       <span className="flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
