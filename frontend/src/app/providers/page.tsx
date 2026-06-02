@@ -118,7 +118,6 @@ export default function ProvidersPage() {
   const openModal = (provider: Provider) => {
     setSelectedProvider(provider);
     setModalStep("details");
-    setPayMethod("pix");
     setNotes("");
     setModalError("");
     setPixData(null);
