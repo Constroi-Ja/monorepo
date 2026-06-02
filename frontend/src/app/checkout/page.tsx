@@ -20,30 +20,11 @@ interface PixResult {
   order_id?: number;
 }
 
-function SimulateApproveButton({ paymentId, onSuccess }: { paymentId: string; onSuccess: () => void }) {
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const handleClick = async () => {
-    setLoading(true);
-    try {
-      await apiClient.post(`/payments/${paymentId}/simulate-approve/`);
-      setDone(true);
-      setTimeout(onSuccess, 800);
-    } catch {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={loading || done}
-      className="w-full py-2.5 mb-2 bg-yellow-400 text-yellow-900 rounded-xl text-sm font-semibold hover:bg-yellow-500 disabled:opacity-60 transition-colors"
-    >
-      {done ? "Aprovado!" : loading ? "Simulando..." : "⚡ Simular pagamento aprovado (teste)"}
-    </button>
-  );
+interface ShippingEstimate {
+  shipping_cost: string;
+  shipping_type: string | null;
+  shipping_type_display: string | null;
+  mixed_companies: boolean;
 }
 
 export default function CheckoutPage() {
@@ -57,6 +38,7 @@ export default function CheckoutPage() {
   const [pixResult, setPixResult] = useState<PixResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [shipping, setShipping] = useState<ShippingEstimate | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [payer, setPayer] = useState({
@@ -82,14 +64,21 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      apiClient.get("/cart/").then((r) => {
-        const data = r.data as any;
-        setCart(Array.isArray(data) ? data : (data?.results ?? []));
-      }).finally(() => setLoading(false));
+      Promise.all([
+        apiClient.get("/cart/").then((r) => {
+          const data = r.data as any;
+          setCart(Array.isArray(data) ? data : (data?.results ?? []));
+        }),
+        apiClient.get<ShippingEstimate>("/cart/shipping-estimate/").then((r) => {
+          if (r.data) setShipping(r.data);
+        }),
+      ]).finally(() => setLoading(false));
     }
   }, [isAuthenticated]);
 
-  const total = useMemo(() => cart.reduce((acc, i) => acc + Number(i.total || 0), 0), [cart]);
+  const itemsTotal = useMemo(() => cart.reduce((acc, i) => acc + Number(i.total || 0), 0), [cart]);
+  const shippingCost = shipping ? Number(shipping.shipping_cost) : 0;
+  const total = itemsTotal + shippingCost;
 
   useEffect(() => {
     if (step !== "success" || !pixResult || paymentConfirmed) return;
@@ -231,13 +220,6 @@ export default function CheckoutPage() {
               Aguardando pagamento...
             </div>
 
-            {process.env.NEXT_PUBLIC_TEST_MODE === "true" && pixResult.payment_id && (
-              <SimulateApproveButton
-                paymentId={pixResult.mp_payment_id || String(pixResult.payment_id)}
-                onSuccess={() => setPaymentConfirmed(true)}
-              />
-            )}
-
             <button
               onClick={() => router.push("/my-orders")}
               className="w-full py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors mb-2"
@@ -275,8 +257,20 @@ export default function CheckoutPage() {
               <>
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 mb-4">
                   {cart.map((entry) => (
-                    <div key={entry.id} className="flex items-center justify-between p-4 gap-3">
-                      <div className="min-w-0">
+                    <div key={entry.id} className="flex items-center gap-3 p-4">
+                      {/* Product image */}
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        {entry.item.photo_url ? (
+                          <img src={entry.item.photo_url} alt={entry.item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium text-gray-900 text-sm truncate">{entry.item.name}</p>
                         {(entry.item.marca || entry.item.peso) && (
                           <p className="text-xs text-gray-400">
@@ -290,9 +284,35 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                   ))}
-                  <div className="p-4 flex justify-between font-bold text-gray-900">
-                    <span>Total</span>
-                    <span className="text-orange-500">R$ {total.toFixed(2)}</span>
+
+                  {/* Cost breakdown */}
+                  <div className="px-4 py-3 space-y-1.5">
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Subtotal</span>
+                      <span>R$ {itemsTotal.toFixed(2)}</span>
+                    </div>
+                    {shipping && !shipping.mixed_companies && (
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span className="flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zm10 0a2 2 0 11-4 0 2 2 0 014 0zM1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6" />
+                          </svg>
+                          Frete
+                          {shipping.shipping_type_display && (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                              {shipping.shipping_type_display}
+                            </span>
+                          )}
+                        </span>
+                        <span className={shippingCost === 0 ? "text-green-600 font-medium" : ""}>
+                          {shippingCost === 0 ? "Grátis" : `R$ ${shippingCost.toFixed(2)}`}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-gray-900 pt-1.5 border-t border-gray-100">
+                      <span>Total</span>
+                      <span className="text-orange-500">R$ {total.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -327,14 +347,24 @@ export default function CheckoutPage() {
           )}
 
           {/* Order summary mini */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-500">{cart.length} item{cart.length !== 1 ? "s" : ""}</p>
-              <p className="font-bold text-gray-900">R$ {total.toFixed(2)}</p>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm text-gray-500">{cart.length} item{cart.length !== 1 ? "s" : ""}</p>
+                <div className="mt-1 space-y-0.5">
+                  <p className="text-xs text-gray-400">Subtotal: R$ {itemsTotal.toFixed(2)}</p>
+                  {shipping && !shipping.mixed_companies && (
+                    <p className="text-xs text-gray-400">
+                      Frete{shipping.shipping_type_display ? ` (${shipping.shipping_type_display})` : ""}: {shippingCost === 0 ? "Grátis" : `R$ ${shippingCost.toFixed(2)}`}
+                    </p>
+                  )}
+                </div>
+                <p className="font-bold text-gray-900 mt-1">Total: R$ {total.toFixed(2)}</p>
+              </div>
+              <button onClick={() => setStep("review")} className="text-xs text-orange-500 hover:text-orange-600 underline">
+                Editar
+              </button>
             </div>
-            <button onClick={() => setStep("review")} className="text-xs text-orange-500 hover:text-orange-600 underline">
-              Editar
-            </button>
           </div>
 
           {/* PIX info banner */}

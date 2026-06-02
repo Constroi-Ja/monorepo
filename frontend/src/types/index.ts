@@ -78,6 +78,7 @@ export interface CompanyProfile {
 // Store and Provider Types
 export interface Store {
   id: number;
+  company_user_id?: number;
   company_name: string;
   category: string;
   distance: number;
@@ -131,6 +132,8 @@ export interface Order {
   status: "pendente" | "confirmado" | "enviado" | "entregue" | "cancelado";
   status_display: string;
   total_amount: string;
+  shipping_cost?: string;
+  shipping_type?: string;
   payment_status?: string | null;
   items: OrderItemData[];
   created_at: string;

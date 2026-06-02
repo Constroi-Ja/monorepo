@@ -183,7 +183,12 @@ export default function OrderDetailPage({
   }, [user, orderId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !order) return;
+    const chatEnabled = ["confirmado", "enviado"].includes(order.status);
+    if (!chatEnabled) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
+    }
     const fetchMessages = () => {
       apiClient
         .get<OrderMessage[]>(`/orders/${orderId}/messages/`)
@@ -193,7 +198,7 @@ export default function OrderDetailPage({
     fetchMessages();
     intervalRef.current = setInterval(fetchMessages, 8000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [user, orderId]);
+  }, [user, orderId, order?.status]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -369,9 +374,30 @@ export default function OrderDetailPage({
                     );
                   })}
                 </div>
-                <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100">
-                  <span className="text-sm font-semibold text-gray-700">Total</span>
-                  <span className="text-lg font-bold text-gray-900">{formatCurrency(order.total_amount)}</span>
+
+                {/* Cost breakdown */}
+                <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+                  {(order as any).shipping_cost !== undefined && (
+                    <>
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>Subtotal</span>
+                        <span>{formatCurrency(order.total_amount - Number((order as any).shipping_cost || 0))}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span className="flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zm10 0a2 2 0 11-4 0 2 2 0 014 0zM1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6" />
+                          </svg>
+                          Frete
+                        </span>
+                        <span>{Number((order as any).shipping_cost || 0) === 0 ? "Grátis" : formatCurrency(Number((order as any).shipping_cost))}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex items-center justify-between pt-1.5 border-t border-gray-100">
+                    <span className="text-sm font-semibold text-gray-700">Total</span>
+                    <span className="text-lg font-bold text-gray-900">{formatCurrency(order.total_amount)}</span>
+                  </div>
                 </div>
               </div>
 
@@ -398,59 +424,70 @@ export default function OrderDetailPage({
                   </button>
                 )}
 
-              {/* Chat section */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-50">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Mensagens</h2>
-                </div>
+              {/* Chat section — only for confirmado/enviado */}
+              {["confirmado", "enviado"].includes(order.status) ? (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-50">
+                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Mensagens</h2>
+                  </div>
 
-                <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-3 min-h-[220px] max-h-[420px]">
-                  {messages.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center py-10">
-                      <p className="text-xs text-gray-400">Nenhuma mensagem ainda. Inicie a conversa abaixo.</p>
-                    </div>
-                  ) : (
-                    messages.map((msg) => {
-                      const isOwn = msg.sender_id === user.id;
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`flex flex-col gap-0.5 max-w-[75%] ${isOwn ? "self-end items-end" : "self-start items-start"}`}
-                        >
-                          <p className="text-[10px] text-gray-400 px-1">
-                            {msg.sender_name ?? "Usuário"} · {formatTime(msg.created_at)}
-                          </p>
-                          <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isOwn ? "bg-orange-500 text-white rounded-tr-sm" : "bg-gray-100 text-gray-800 rounded-tl-sm"}`}>
-                            {msg.content}
+                  <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-3 min-h-[220px] max-h-[420px]">
+                    {messages.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center py-10">
+                        <p className="text-xs text-gray-400">Nenhuma mensagem ainda. Inicie a conversa abaixo.</p>
+                      </div>
+                    ) : (
+                      messages.map((msg) => {
+                        const isOwn = msg.sender_id === user.id;
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex flex-col gap-0.5 max-w-[75%] ${isOwn ? "self-end items-end" : "self-start items-start"}`}
+                          >
+                            <p className="text-[10px] text-gray-400 px-1">
+                              {msg.sender_name ?? "Usuário"} · {formatTime(msg.created_at)}
+                            </p>
+                            <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isOwn ? "bg-orange-500 text-white rounded-tr-sm" : "bg-gray-100 text-gray-800 rounded-tl-sm"}`}>
+                              {msg.content}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
+                        );
+                      })
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
 
-                <div className="px-4 py-4 border-t border-gray-100 flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyDown={handleInputKeyDown}
-                    placeholder="Digite uma mensagem…"
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={sending || !messageText.trim()}
-                    className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
-                    aria-label="Enviar mensagem"
-                  >
-                    <svg className="w-4 h-4 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
+                  <div className="px-4 py-4 border-t border-gray-100 flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyDown={handleInputKeyDown}
+                      placeholder="Digite uma mensagem…"
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={sending || !messageText.trim()}
+                      className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+                      aria-label="Enviar mensagem"
+                    >
+                      <svg className="w-4 h-4 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
+                  <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <p className="text-sm text-gray-400">
+                    Chat disponível apenas para pedidos <span className="font-medium text-gray-500">Confirmados</span> ou <span className="font-medium text-gray-500">Em Envio</span>.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

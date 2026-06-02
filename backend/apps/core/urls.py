@@ -37,6 +37,7 @@ from .views import (
     inventory_list_create,
     inventory_detail,
     store_detail,
+    cart_shipping_estimate,
 )
 
 app_name = "core"
@@ -52,6 +53,7 @@ urlpatterns = [
     path("items/<int:pk>/", ItemDetailView.as_view(), name="item_detail"),
     path("cart/", CartItemListCreateView.as_view(), name="cart_list_create"),
     path("cart/<int:pk>/", CartItemDetailView.as_view(), name="cart_detail"),
+    path("cart/shipping-estimate/", cart_shipping_estimate, name="cart_shipping_estimate"),
     path("deliverers/", DelivererListCreateView.as_view(), name="deliverer_list_create"),
     path("deliverers/<int:pk>/", DelivererDetailView.as_view(), name="deliverer_detail"),
     path("technical-visits/", create_technical_visit, name="technical_visit_create"),

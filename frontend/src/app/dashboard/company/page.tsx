@@ -7,6 +7,13 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { CompanyOnboardingModal } from "@/components/modals/CompanyOnboardingModal";
+import { apiClient } from "@/lib/api-client";
+
+interface PendingOrder {
+  id: number;
+  buyer_name?: string;
+  status: string;
+}
 
 const features = [
   {
@@ -80,10 +87,30 @@ const features = [
 export default function CompanyDashboardPage() {
   const { user, loading: authLoading, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [reminderOrderIds, setReminderOrderIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (user?.user_type === "company") {
+      fetchCompanyAlerts();
+    }
+  }, [user]);
+
+  const fetchCompanyAlerts = async () => {
+    try {
+      const r = await apiClient.get("/orders/company/");
+      const data = Array.isArray(r.data) ? r.data : [];
+      setPendingOrders(data.filter((o: PendingOrder) => ["pendente", "confirmado"].includes(o.status)));
+    } catch {}
+  };
+
+  const handleAlertClick = (orderId: number) => {
+    setReminderOrderIds(prev => new Set([...prev, orderId]));
+  };
 
   const showOnboarding =
     !authLoading &&
@@ -131,6 +158,69 @@ export default function CompanyDashboardPage() {
                 </p>
               </button>
             ))}
+          </div>
+
+          {/* Alerts */}
+          <div className="mt-8 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              Alertas
+            </p>
+
+            {pendingOrders.length === 0 ? (
+              <div className="flex items-center justify-center py-4">
+                <p className="text-xs text-gray-400">Nenhum alerta no momento.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pendingOrders.map((order) => {
+                  const isReminder = reminderOrderIds.has(order.id) || order.status === "confirmado";
+                  return (
+                    <div key={order.id}>
+                      {!isReminder ? (
+                        <button
+                          onClick={() => handleAlertClick(order.id)}
+                          className="w-full text-left p-2.5 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                        >
+                          <p className="text-xs font-semibold text-amber-800">
+                            Novo pedido #{order.id}
+                          </p>
+                          <p className="text-xs text-amber-600 mt-0.5">
+                            {order.buyer_name || "Cliente"} · Clique para ver o lembrete de envio
+                          </p>
+                        </button>
+                      ) : (
+                        <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-xs font-semibold text-blue-800">
+                            Lembrete: Marcar pedido #{order.id} como enviado
+                          </p>
+                          <p className="text-xs text-blue-600 mt-0.5">
+                            {order.buyer_name || "Cliente"} · Pedido confirmado, pronto para envio
+                          </p>
+                          <button
+                            onClick={() => router.push("/dashboard/company/orders")}
+                            className="mt-1.5 text-xs text-blue-700 font-medium hover:underline"
+                          >
+                            Ir para Pedidos →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {pendingOrders.length > 0 && (
+              <button
+                onClick={() => router.push("/dashboard/company/orders")}
+                className="mt-3 text-xs text-orange-500 font-medium hover:underline w-full text-right"
+              >
+                Ver todos os pedidos →
+              </button>
+            )}
           </div>
         </div>
       </div>

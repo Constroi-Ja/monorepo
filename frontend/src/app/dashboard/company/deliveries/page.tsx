@@ -43,12 +43,10 @@ export default function CompanyDeliveriesPage() {
   const [form, setForm] = useState({
     avg_minutes_per_km: 4,
     display_radius_km: 20,
-    opening_time: "08:00",
-    closing_time: "18:00",
-    base_light: 10,
-    base_medium: 20,
-    base_mid_heavy: 35,
-    base_heavy: 50,
+    base_price_leve: 0,
+    base_price_medio: 0,
+    base_price_meio_pesado: 0,
+    base_price_pesado: 0,
   });
 
   useEffect(() => {
@@ -57,12 +55,15 @@ export default function CompanyDeliveriesPage() {
 
   useEffect(() => {
     if (user?.company_profile) {
+      const cp = user.company_profile as any;
       setForm((prev) => ({
         ...prev,
-        avg_minutes_per_km: user.company_profile!.avg_minutes_per_km || 4,
-        display_radius_km: user.company_profile!.display_radius_km || 20,
-        opening_time: user.company_profile!.opening_time || "08:00",
-        closing_time: user.company_profile!.closing_time || "18:00",
+        avg_minutes_per_km: cp.avg_minutes_per_km || 4,
+        display_radius_km: cp.display_radius_km || 20,
+        base_price_leve: Number(cp.base_price_leve ?? 0),
+        base_price_medio: Number(cp.base_price_medio ?? 0),
+        base_price_meio_pesado: Number(cp.base_price_meio_pesado ?? 0),
+        base_price_pesado: Number(cp.base_price_pesado ?? 0),
       }));
     }
   }, [user]);
@@ -99,8 +100,10 @@ export default function CompanyDeliveriesPage() {
       await apiClient.put("/auth/profile/company/", {
         avg_minutes_per_km: form.avg_minutes_per_km,
         display_radius_km: form.display_radius_km,
-        opening_time: form.opening_time,
-        closing_time: form.closing_time,
+        base_price_leve: form.base_price_leve,
+        base_price_medio: form.base_price_medio,
+        base_price_meio_pesado: form.base_price_meio_pesado,
+        base_price_pesado: form.base_price_pesado,
         onboarding_completed: true,
       });
       await refreshUser();
@@ -143,14 +146,6 @@ export default function CompanyDeliveriesPage() {
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Gerenciar Entregas</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="text-sm text-gray-700">
-              Horário de abertura
-              <input type="time" value={form.opening_time} onChange={(e) => setForm({ ...form, opening_time: e.target.value })} className="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-            <label className="text-sm text-gray-700">
-              Horário de fechamento
-              <input type="time" value={form.closing_time} onChange={(e) => setForm({ ...form, closing_time: e.target.value })} className="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-            <label className="text-sm text-gray-700">
               Minutos por km
               <input type="number" value={form.avg_minutes_per_km} onChange={(e) => setForm({ ...form, avg_minutes_per_km: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" />
             </label>
@@ -159,12 +154,25 @@ export default function CompanyDeliveriesPage() {
               <input type="number" value={form.display_radius_km} onChange={(e) => setForm({ ...form, display_radius_km: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" />
             </label>
           </div>
-          <h2 className="text-lg font-semibold text-gray-800 mt-6 mb-3">Preço base por categoria</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mt-6 mb-1">Preço de frete por categoria</h2>
+          <p className="text-xs text-gray-400 mb-3">O frete cobrado ao cliente é definido pelo item mais pesado do pedido.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="text-sm text-gray-700">Preço Base - Leve (R$)<input type="number" value={form.base_light} onChange={(e) => setForm({ ...form, base_light: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
-            <label className="text-sm text-gray-700">Preço Base - Médio (R$)<input type="number" value={form.base_medium} onChange={(e) => setForm({ ...form, base_medium: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
-            <label className="text-sm text-gray-700">Preço Base - Meio-Pesado (R$)<input type="number" value={form.base_mid_heavy} onChange={(e) => setForm({ ...form, base_mid_heavy: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
-            <label className="text-sm text-gray-700">Preço Base - Pesado (R$)<input type="number" value={form.base_heavy} onChange={(e) => setForm({ ...form, base_heavy: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
+            <label className="text-sm text-gray-700">
+              Frete Leve (R$)
+              <input type="number" min="0" step="0.01" value={form.base_price_leve} onChange={(e) => setForm({ ...form, base_price_leve: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label className="text-sm text-gray-700">
+              Frete Médio (R$)
+              <input type="number" min="0" step="0.01" value={form.base_price_medio} onChange={(e) => setForm({ ...form, base_price_medio: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label className="text-sm text-gray-700">
+              Frete Meio-Pesado (R$)
+              <input type="number" min="0" step="0.01" value={form.base_price_meio_pesado} onChange={(e) => setForm({ ...form, base_price_meio_pesado: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label className="text-sm text-gray-700">
+              Frete Pesado (R$)
+              <input type="number" min="0" step="0.01" value={form.base_price_pesado} onChange={(e) => setForm({ ...form, base_price_pesado: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
           </div>
 
           {saveSuccess && (

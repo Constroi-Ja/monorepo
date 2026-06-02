@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -9,7 +9,13 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
 import { ProviderDetailModal } from "@/components/modals/ProviderDetailModal";
 import { apiClient } from "@/lib/api-client";
-import type { Store, Provider } from "@/types";
+import type { Store, Provider, TechnicalVisitRequest } from "@/types";
+
+interface ConsumerOrder {
+  id: number;
+  company_name?: string;
+  status: string;
+}
 
 export default function ConsumerDashboardPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
@@ -18,6 +24,8 @@ export default function ConsumerDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [featuredStores, setFeaturedStores] = useState<Store[]>([]);
   const [nearbyProviders, setNearbyProviders] = useState<Provider[]>([]);
+  const [consumerOrders, setConsumerOrders] = useState<ConsumerOrder[]>([]);
+  const [consumerVisits, setConsumerVisits] = useState<TechnicalVisitRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
@@ -38,18 +46,15 @@ export default function ConsumerDashboardPage() {
     if (user && user.user_type === "consumer") {
       fetchFeaturedStores();
       fetchNearbyProviders();
+      fetchConsumerAlerts();
     }
   }, [user]);
 
   const fetchFeaturedStores = async () => {
     try {
       const response = await apiClient.get<Store[]>("/stores/featured/");
-      if (response.data) {
-        setFeaturedStores(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching featured stores:", error);
-      // Set empty array on error to prevent infinite loading
+      if (response.data) setFeaturedStores(response.data);
+    } catch {
       setFeaturedStores([]);
     } finally {
       setLoading(false);
@@ -59,13 +64,22 @@ export default function ConsumerDashboardPage() {
   const fetchNearbyProviders = async () => {
     try {
       const response = await apiClient.get<Provider[]>("/providers/nearby/");
-      if (response.data) {
-        setNearbyProviders(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching nearby providers:", error);
-      // Set empty array on error
+      if (response.data) setNearbyProviders(response.data);
+    } catch {
       setNearbyProviders([]);
+    }
+  };
+
+  const fetchConsumerAlerts = async () => {
+    const [ordersRes, visitsRes] = await Promise.allSettled([
+      apiClient.get("/orders/my/"),
+      apiClient.get<TechnicalVisitRequest[]>("/technical-visits/my/"),
+    ]);
+    if (ordersRes.status === "fulfilled" && ordersRes.value.data) {
+      setConsumerOrders(Array.isArray(ordersRes.value.data) ? ordersRes.value.data : []);
+    }
+    if (visitsRes.status === "fulfilled" && visitsRes.value.data) {
+      setConsumerVisits(Array.isArray(visitsRes.value.data) ? visitsRes.value.data : []);
     }
   };
 
@@ -75,6 +89,36 @@ export default function ConsumerDashboardPage() {
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
+
+  const consumerAlerts = useMemo(() => {
+    const alerts: Array<{ title: string; subtitle: string; action: () => void }> = [];
+
+    consumerOrders.filter(o => o.status === "enviado").forEach(o => {
+      alerts.push({
+        title: "Seu pedido saiu para entrega!",
+        subtitle: `Pedido #${o.id}${o.company_name ? ` · ${o.company_name}` : ""} · Confirme ao receber`,
+        action: () => router.push(`/my-orders/${o.id}`),
+      });
+    });
+
+    consumerOrders.filter(o => o.status === "confirmado").forEach(o => {
+      alerts.push({
+        title: "Pedido confirmado!",
+        subtitle: `Pedido #${o.id}${o.company_name ? ` · ${o.company_name}` : ""}`,
+        action: () => router.push(`/my-orders/${o.id}`),
+      });
+    });
+
+    consumerVisits.filter(v => v.status === "accepted").forEach(v => {
+      alerts.push({
+        title: "O prestador aceitou sua solicitação de visita!",
+        subtitle: `Visita com ${v.provider_name || "prestador"} · Lembre-se de finalizar após a visita`,
+        action: () => router.push(`/visitas/${v.id}`),
+      });
+    });
+
+    return alerts;
+  }, [consumerOrders, consumerVisits]);
 
   if (authLoading || loading) return <LoadingScreen />;
 
@@ -120,35 +164,68 @@ export default function ConsumerDashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <button
               onClick={() => router.push("/materials")}
-              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 hover:border-orange-200 transition-all"
+              className="group relative rounded-2xl p-5 text-left transition-all hover:shadow-md bg-gray-900 hover:bg-gray-800"
             >
-              <svg className="w-12 h-12 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <span className="text-base font-semibold text-gray-800">Comprar Material</span>
+              <div className="mb-3 text-orange-400">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold mb-1 text-white">Comprar Material</h3>
+              <p className="text-xs text-gray-400">Encontre materiais para sua obra</p>
             </button>
 
             <button
               onClick={() => router.push("/providers")}
-              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 hover:border-orange-200 transition-all"
+              className="group relative rounded-2xl p-5 text-left transition-all hover:shadow-md bg-gray-900 hover:bg-gray-800"
             >
-              <svg className="w-12 h-12 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="text-base font-semibold text-gray-800">Contratar Prestador</span>
+              <div className="mb-3 text-orange-400">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold mb-1 text-white">Contratar Prestador</h3>
+              <p className="text-xs text-gray-400">Contrate serviços especializados</p>
             </button>
 
             <button
               onClick={() => router.push("/minhas-visitas")}
-              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 hover:border-orange-200 transition-all"
+              className="group relative rounded-2xl p-5 text-left transition-all hover:shadow-md bg-gray-900 hover:bg-gray-800"
             >
-              <svg className="w-12 h-12 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-base font-semibold text-gray-800">Minhas Visitas</span>
+              <div className="mb-3 text-orange-400">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold mb-1 text-white">Minhas Visitas</h3>
+              <p className="text-xs text-gray-400">Acompanhe suas visitas técnicas</p>
             </button>
           </div>
+
+          {/* Alerts */}
+          {consumerAlerts.length > 0 && (
+            <div className="mb-8 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                Alertas
+              </p>
+              <div className="space-y-2">
+                {consumerAlerts.map((alert, i) => (
+                  <button
+                    key={i}
+                    onClick={alert.action}
+                    className="w-full text-left p-2.5 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                  >
+                    <p className="text-xs font-semibold text-amber-800">{alert.title}</p>
+                    <p className="text-xs text-amber-600 mt-0.5">{alert.subtitle}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Featured Stores */}
           <div className="mb-12">

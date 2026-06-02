@@ -89,6 +89,10 @@ class CompanySerializer(serializers.ModelSerializer):
             "onboarding_completed",
             "pix_key_type",
             "pix_key",
+            "base_price_leve",
+            "base_price_medio",
+            "base_price_meio_pesado",
+            "base_price_pesado",
             "rating_average",
             "rating_count",
         ]

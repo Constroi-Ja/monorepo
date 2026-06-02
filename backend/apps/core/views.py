@@ -220,6 +220,7 @@ def featured_stores(request):
         stores.append(
             {
                 "id": company.id,
+                "company_user_id": company.user.id,
                 "company_name": company.company_name,
                 "category": company.segment,
                 "distance": distance,
@@ -303,6 +304,7 @@ def stores_for_provider(request):
         stores.append(
             {
                 "id": company.id,
+                "company_user_id": company.user.id,
                 "company_name": company.company_name,
                 "category": company.segment,
                 "distance": distance,
@@ -374,6 +376,57 @@ class CartItemDetailView(generics.RetrieveUpdateDestroyAPIView):
         return CartItem.objects.filter(user=self.request.user).select_related(
             "item", "item__company", "item__company__company_profile"
         )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def cart_shipping_estimate(request):
+    """Returns the estimated shipping cost for the current cart."""
+    _PRIORITY = {"leve": 0, "medio": 1, "meio-pesado": 2, "pesado": 3}
+    _LABELS = {"leve": "Leve", "medio": "Médio", "meio-pesado": "Meio-Pesado", "pesado": "Pesado"}
+
+    cart_items = CartItem.objects.filter(user=request.user).select_related(
+        "item", "item__company__company_profile"
+    )
+
+    if not cart_items.exists():
+        return Response({"shipping_cost": "0.00", "shipping_type": None, "shipping_type_display": None, "mixed_companies": False})
+
+    company_ids = {ci.item.company_id for ci in cart_items}
+    if len(company_ids) > 1:
+        return Response({"shipping_cost": "0.00", "shipping_type": None, "shipping_type_display": None, "mixed_companies": True})
+
+    company_user_id = company_ids.pop()
+    try:
+        company_user = User.objects.select_related("company_profile").get(id=company_user_id)
+        cp = company_user.company_profile
+    except Exception:
+        return Response({"shipping_cost": "0.00", "shipping_type": None, "shipping_type_display": None, "mixed_companies": False})
+
+    max_type = max(
+        (ci.item.shipping_type for ci in cart_items),
+        key=lambda t: _PRIORITY.get(t, 0),
+    )
+    price_map = {
+        "leve": float(cp.base_price_leve or 0),
+        "medio": float(cp.base_price_medio or 0),
+        "meio-pesado": float(cp.base_price_meio_pesado or 0),
+        "pesado": float(cp.base_price_pesado or 0),
+    }
+    shipping_cost = price_map.get(max_type, 0.0)
+
+    return Response({
+        "shipping_cost": f"{shipping_cost:.2f}",
+        "shipping_type": max_type,
+        "shipping_type_display": _LABELS.get(max_type, max_type),
+        "mixed_companies": False,
+        "all_prices": {
+            "leve": f"{price_map['leve']:.2f}",
+            "medio": f"{price_map['medio']:.2f}",
+            "meio-pesado": f"{price_map['meio-pesado']:.2f}",
+            "pesado": f"{price_map['pesado']:.2f}",
+        },
+    })
 
 
 class DelivererListCreateView(generics.ListCreateAPIView):
@@ -742,11 +795,14 @@ def create_review(request):
     except User.DoesNotExist:
         return Response({"error": "Usuário não encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
-    review, created = Review.objects.update_or_create(
+    review = Review.objects.create(
         reviewer=request.user,
         target_user=target_user,
-        defaults={"rating": rating, "comment": comment, "target_type": target_type},
+        rating=rating,
+        comment=comment,
+        target_type=target_type,
     )
+    created = True
 
     # Update rating average on target
     if target_type == "provider" and hasattr(target_user, "provider_profile"):
@@ -914,9 +970,34 @@ def create_order(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    total = sum(float(item.price) * qty for item, qty in items_objs)
+    items_total = sum(float(item.price) * qty for item, qty in items_objs)
 
-    order = Order.objects.create(buyer=request.user, company=company_user, total_amount=total)
+    # --- Shipping cost calculation ---
+    _SHIPPING_PRIORITY = {"leve": 0, "medio": 1, "meio-pesado": 2, "pesado": 3}
+    max_shipping_type = max(
+        (item.shipping_type for item, _ in items_objs),
+        key=lambda t: _SHIPPING_PRIORITY.get(t, 0),
+    )
+    shipping_cost = 0.0
+    if hasattr(company_user, "company_profile"):
+        cp = company_user.company_profile
+        _PRICE_MAP = {
+            "leve": float(cp.base_price_leve or 0),
+            "medio": float(cp.base_price_medio or 0),
+            "meio-pesado": float(cp.base_price_meio_pesado or 0),
+            "pesado": float(cp.base_price_pesado or 0),
+        }
+        shipping_cost = _PRICE_MAP.get(max_shipping_type, 0.0)
+    total = items_total + shipping_cost
+    # ---------------------------------
+
+    order = Order.objects.create(
+        buyer=request.user,
+        company=company_user,
+        total_amount=total,
+        shipping_cost=shipping_cost,
+        shipping_type=max_shipping_type,
+    )
     for item, qty in items_objs:
         OrderItem.objects.create(order=order, item=item, quantity=qty, unit_price=item.price)
 
@@ -1260,6 +1341,7 @@ def store_detail(request, store_id: int):
 
     return Response({
         "id": company.id,
+        "company_user_id": company.user.id,
         "company_name": company.company_name,
         "category": company.segment,
         "phone": getattr(company, "phone", None),

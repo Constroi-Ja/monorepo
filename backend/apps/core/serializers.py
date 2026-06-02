@@ -325,9 +325,10 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             "id", "buyer", "buyer_name", "company", "company_name",
             "status", "status_display", "total_amount",
+            "shipping_cost", "shipping_type",
             "payment_status", "items", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "buyer", "company", "status", "total_amount", "created_at", "updated_at"]
+        read_only_fields = ["id", "buyer", "company", "status", "total_amount", "shipping_cost", "shipping_type", "created_at", "updated_at"]
 
     def get_company_name(self, obj):
         if hasattr(obj.company, "company_profile"):

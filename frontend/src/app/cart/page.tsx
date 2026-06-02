@@ -10,12 +10,20 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { apiClient } from "@/lib/api-client";
 import type { CartItem } from "@/types";
 
+interface ShippingEstimate {
+  shipping_cost: string;
+  shipping_type: string | null;
+  shipping_type_display: string | null;
+  mixed_companies: boolean;
+}
+
 export default function CartPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [shipping, setShipping] = useState<ShippingEstimate | null>(null);
 
   const fetchCart = async () => {
     try {
@@ -29,22 +37,36 @@ export default function CartPage() {
     }
   };
 
+  const fetchShipping = async () => {
+    try {
+      const r = await apiClient.get<ShippingEstimate>("/cart/shipping-estimate/");
+      if (r.data) setShipping(r.data);
+    } catch {
+      setShipping(null);
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (isAuthenticated) fetchCart();
+    if (isAuthenticated) {
+      fetchCart();
+      fetchShipping();
+    }
   }, [isAuthenticated]);
 
-  const total = useMemo(() => cart.reduce((acc, item) => acc + Number(item.total || 0), 0), [cart]);
+  const itemsTotal = useMemo(() => cart.reduce((acc, item) => acc + Number(item.total || 0), 0), [cart]);
+  const shippingCost = shipping ? Number(shipping.shipping_cost) : 0;
+  const total = itemsTotal + shippingCost;
 
   const updateQuantity = async (id: number, quantity: number) => {
     if (quantity < 1) return;
     setUpdatingId(id);
     try {
       await apiClient.patch(`/cart/${id}/`, { quantity });
-      await fetchCart();
+      await Promise.all([fetchCart(), fetchShipping()]);
     } finally {
       setUpdatingId(null);
     }
@@ -54,7 +76,7 @@ export default function CartPage() {
     setUpdatingId(id);
     try {
       await apiClient.delete(`/cart/${id}/`);
-      await fetchCart();
+      await Promise.all([fetchCart(), fetchShipping()]);
     } finally {
       setUpdatingId(null);
     }
@@ -113,20 +135,38 @@ export default function CartPage() {
                     updatingId === entry.id ? "opacity-60 pointer-events-none" : ""
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h2 className="font-semibold text-gray-900 text-sm">{entry.item.name}</h2>
-                      {(entry.item.marca || entry.item.peso) && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {entry.item.marca}{entry.item.marca && entry.item.peso ? " · " : ""}{entry.item.peso ? `${entry.item.peso} kg` : ""}
-                        </p>
+                  <div className="flex items-start gap-3">
+                    {/* Product image */}
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                      {entry.item.photo_url ? (
+                        <img
+                          src={entry.item.photo_url}
+                          alt={entry.item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <svg className="w-7 h-7 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                        </div>
                       )}
-                      <p className="text-xs text-gray-500 mt-0.5">{entry.item.company_name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">R$ {Number(entry.item.price).toFixed(2)} / un</p>
                     </div>
-                    <p className="font-bold text-orange-500 text-sm flex-shrink-0">
-                      R$ {Number(entry.total || 0).toFixed(2)}
-                    </p>
+                    <div className="flex items-start justify-between gap-3 flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <h2 className="font-semibold text-gray-900 text-sm">{entry.item.name}</h2>
+                        {(entry.item.marca || entry.item.peso) && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {entry.item.marca}{entry.item.marca && entry.item.peso ? " · " : ""}{entry.item.peso ? `${entry.item.peso} kg` : ""}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-0.5">{entry.item.company_name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">R$ {Number(entry.item.price).toFixed(2)} / un</p>
+                      </div>
+                      <p className="font-bold text-orange-500 text-sm flex-shrink-0">
+                        R$ {Number(entry.total || 0).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between mt-3">
@@ -160,13 +200,38 @@ export default function CartPage() {
 
               {/* Order summary */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mt-2">
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                  <span>Subtotal ({cart.length} {cart.length === 1 ? "item" : "itens"})</span>
-                  <span>R$ {total.toFixed(2)}</span>
+                <div className="space-y-1.5 mb-3">
+                  <div className="flex items-center justify-between text-sm text-gray-600">
+                    <span>Subtotal ({cart.length} {cart.length === 1 ? "item" : "itens"})</span>
+                    <span>R$ {itemsTotal.toFixed(2)}</span>
+                  </div>
+                  {shipping && !shipping.mixed_companies && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5 text-gray-600">
+                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zm10 0a2 2 0 11-4 0 2 2 0 014 0zM1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6" />
+                        </svg>
+                        Frete
+                        {shipping.shipping_type_display && (
+                          <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                            {shipping.shipping_type_display}
+                          </span>
+                        )}
+                      </span>
+                      <span className={shippingCost === 0 ? "text-green-600 font-medium" : "text-gray-700 font-medium"}>
+                        {shippingCost === 0 ? "Grátis" : `R$ ${shippingCost.toFixed(2)}`}
+                      </span>
+                    </div>
+                  )}
+                  {shipping?.mixed_companies && (
+                    <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                      Itens de múltiplas lojas — finalize em pedidos separados para calcular o frete.
+                    </p>
+                  )}
                 </div>
-                <div className="flex items-center justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-100 mt-2">
+                <div className="flex items-center justify-between font-bold text-gray-900 text-base pt-2.5 border-t border-gray-100">
                   <span>Total</span>
-                  <span>R$ {total.toFixed(2)}</span>
+                  <span className="text-orange-500">R$ {total.toFixed(2)}</span>
                 </div>
                 <button
                   onClick={() => router.push("/checkout")}
