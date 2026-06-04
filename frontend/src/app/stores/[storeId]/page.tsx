@@ -43,7 +43,7 @@ const shippingColors: Record<string, string> = {
 };
 
 export default function StoreProfilePage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const { loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const params = useParams<{ storeId: string }>();
 

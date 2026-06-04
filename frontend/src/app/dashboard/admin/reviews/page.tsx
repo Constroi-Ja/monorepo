@@ -119,7 +119,7 @@ export default function AdminReviewsPage() {
                         <span className="font-medium text-gray-600">{review.reviewer_name}</span> avaliou <span className="font-medium text-gray-600">{review.target_name}</span>
                       </p>
                       {review.comment ? (
-                        <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2 italic">"{review.comment}"</p>
+                        <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2 italic">&ldquo;{review.comment}&rdquo;</p>
                       ) : (
                         <p className="text-xs text-gray-400 italic">Sem comentário.</p>
                       )}

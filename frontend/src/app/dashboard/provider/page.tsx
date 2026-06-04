@@ -86,7 +86,6 @@ export default function ProviderDashboardPage() {
   }
 
   const fullName = user.provider_profile?.full_name || user.first_name || user.username;
-  const userName = fullName?.split(" ")[0] || fullName || "";
 
   return (
     <div className="flex min-h-screen bg-gray-50">

@@ -39,12 +39,6 @@ function toArray<T>(data: unknown): T[] {
   return [];
 }
 
-const shippingColors: Record<string, string> = {
-  leve: "bg-sky-100 text-sky-700",
-  medio: "bg-blue-100 text-blue-700",
-  "meio-pesado": "bg-amber-100 text-amber-700",
-  pesado: "bg-red-100 text-red-700",
-};
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 

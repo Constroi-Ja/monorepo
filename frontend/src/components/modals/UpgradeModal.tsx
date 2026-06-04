@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/Button";
+import { useSearchParams } from "next/navigation";
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -41,7 +40,6 @@ const upgradeData = {
 };
 
 export function UpgradeModal({ isOpen, onClose, userType }: UpgradeModalProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {

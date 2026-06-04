@@ -8,7 +8,6 @@ import { ProgressIndicator } from "@/components/ui/ProgressIndicator";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { InfoBox } from "@/components/ui/InfoBox";
 import { useMultiStepForm } from "@/hooks/useMultiStepForm";
 import { formatCEP, formatCPF, formatPhone, formatDate, validateCEP, validateCPF } from "@/utils/formatters";
 import { useCEP } from "@/hooks/useCEP";

@@ -12,7 +12,7 @@ import { InfoBox } from "@/components/ui/InfoBox";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useMultiStepForm } from "@/hooks/useMultiStepForm";
-import { formatCEP, formatCPF, formatCNPJ, formatPhone, formatDate, validateCEP, validateCPF, validateCNPJ } from "@/utils/formatters";
+import { formatCEP, formatPhone, formatDate, validateCEP, validateCPF, validateCNPJ } from "@/utils/formatters";
 import { useCEP } from "@/hooks/useCEP";
 import { apiClient } from "@/lib/api-client";
 
