@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -23,7 +23,7 @@ interface AdminProvider {
   created_at: string;
 }
 
-export default function AdminProvidersPage() {
+function AdminProvidersPageContent() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -250,5 +250,14 @@ export default function AdminProvidersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function AdminProvidersPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminProvidersPageContent />
+    </Suspense>
   );
 }

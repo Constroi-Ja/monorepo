@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -17,7 +17,7 @@ interface ConsumerOrder {
   status: string;
 }
 
-export default function ConsumerDashboardPage() {
+function ConsumerDashboardPageContent() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -389,5 +389,14 @@ export default function ConsumerDashboardPage() {
         />
       )}
     </div>
+  );
+}
+
+
+export default function ConsumerDashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConsumerDashboardPageContent />
+    </Suspense>
   );
 }

@@ -1,8 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -40,14 +37,6 @@ const upgradeData = {
 };
 
 export function UpgradeModal({ isOpen, onClose, userType }: UpgradeModalProps) {
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    if (searchParams.get("upgrade") === "true") {
-      // Modal will be opened via URL param
-    }
-  }, [searchParams]);
-
   if (!isOpen) return null;
 
   const data = upgradeData[userType];

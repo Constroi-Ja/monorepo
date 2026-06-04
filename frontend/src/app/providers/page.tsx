@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -30,7 +30,7 @@ interface PayerForm {
   cpf: string;
 }
 
-export default function ProvidersPage() {
+function ProvidersPageContent() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -442,5 +442,14 @@ export default function ProvidersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function ProvidersPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProvidersPageContent />
+    </Suspense>
   );
 }

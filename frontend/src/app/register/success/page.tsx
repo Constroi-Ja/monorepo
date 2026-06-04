@@ -1,11 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 
-export default function RegisterSuccessPage() {
+function RegisterSuccessContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
 
@@ -77,5 +78,13 @@ export default function RegisterSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterSuccessContent />
+    </Suspense>
   );
 }

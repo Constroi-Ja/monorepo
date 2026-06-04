@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
-export default function ForgotPasswordConfirmPage() {
+function ForgotPasswordConfirmContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get("email") || "";
@@ -90,5 +91,13 @@ export default function ForgotPasswordConfirmPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordConfirmPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordConfirmContent />
+    </Suspense>
   );
 }
