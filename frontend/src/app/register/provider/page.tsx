@@ -380,7 +380,7 @@ function Step2({ data, updateData, errors, setErrors }: {
   );
 }
 
-function Step3({ data, updateData }: { data: ProviderFormData; updateData: (updates: Partial<ProviderFormData>) => void }) {
+function Step3({ data, updateData, errors: _errors, setErrors: _setErrors }: { data: ProviderFormData; updateData: (updates: Partial<ProviderFormData>) => void; errors: Record<string, string>; setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>> }) {
   return (
     <div className="space-y-4">
       <Input
