@@ -2,7 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
   images: {
     remotePatterns: [
       { protocol: 'http', hostname: 'localhost' },
