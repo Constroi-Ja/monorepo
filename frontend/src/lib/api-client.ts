@@ -134,7 +134,7 @@ class ApiClient {
     }
   }
 
-  private handleError(error: unknown): ApiResponse {
+  private handleError<T>(error: unknown): ApiResponse<T> {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<{ detail?: string; error?: string; [key: string]: any }>;
       const response = axiosError.response;
