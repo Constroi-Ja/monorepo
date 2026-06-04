@@ -354,7 +354,7 @@ export default function ProvidersPage() {
                           <input
                             type={key === "email" ? "email" : "text"}
                             placeholder={placeholder}
-                            value={(payer as Record<string, string>)[key]}
+                            value={(payer as unknown as Record<string, string>)[key]}
                             onChange={(e) => setPayer((prev) => ({ ...prev, [key]: e.target.value }))}
                             className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
                           />
