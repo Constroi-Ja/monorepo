@@ -4,7 +4,16 @@
       "Bash(xxd \"c:\\\\Users\\\\joaoe_ci341tc\\\\Documents\\\\constroija\\\\monorepo\\\\backend\\\\init-db.sh\")",
       "Bash(xargs file *)",
       "Bash(xargs grep *)",
-      "Bash(python manage.py makemigrations core)"
+      "Bash(python manage.py makemigrations core)",
+      "Bash(sed -i 's/⭐ {item.rating.toFixed\\(1\\)} • {item.distance.toFixed\\(1\\)} km/{item.rating.toFixed\\(1\\)} • {item.distance.toFixed\\(1\\)} km/' /home/joao/Documentos/constroija/mobile/app/\\\\\\(app\\\\\\)/\\\\\\(admin\\\\\\)/providers/index.tsx)",
+      "Bash(sed -i 's/⭐ {item.rating.toFixed\\(1\\)}/{item.rating.toFixed\\(1\\)}/' /home/joao/Documentos/constroija/mobile/app/\\\\\\(app\\\\\\)/\\\\\\(admin\\\\\\)/stores/index.tsx)",
+      "Bash(sed -i 's/icon=\"🏪\"/icon=\"store\"/' /home/joao/Documentos/constroija/mobile/app/\\\\\\(app\\\\\\)/\\\\\\(consumer\\\\\\)/stores/index.tsx)",
+      "Bash(sed -i 's/icon=\"📦\"/icon=\"package\"/' /home/joao/Documentos/constroija/mobile/app/\\\\\\(app\\\\\\)/\\\\\\(consumer\\\\\\)/orders/index.tsx)",
+      "Bash(sed -i 's/icon=\"🛒\"/icon=\"shopping-cart\"/' /home/joao/Documentos/constroija/mobile/app/\\\\\\(app\\\\\\)/\\\\\\(consumer\\\\\\)/cart/index.tsx)",
+      "Bash(npx expo *)",
+      "Bash(node node_modules/.bin/npm install @react-native-async-storage/async-storage)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(node_modules/.bin/tsc --noEmit)"
     ],
     "additionalDirectories": [
       "c:\\Users\\joaoe_ci341tc\\Documents\\constroija\\monorepo\\frontend\\src\\app\\visitas"
