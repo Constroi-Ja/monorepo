@@ -26,7 +26,6 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml README.md ./
 
 # Install dependencies
-RUN uv lock --extra api --extra postgres || true
 RUN uv sync --extra api --extra postgres
 
 # Copy project
@@ -42,5 +41,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Run gunicorn
-CMD ["uv", "run", "gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4"]
+# Run migrations then gunicorn
+CMD ["sh", "-c", "uv run python manage.py migrate --noinput && uv run gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4"]

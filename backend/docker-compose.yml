@@ -41,22 +41,9 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-constroija_db}
       - POSTGRES_USER=${POSTGRES_USER:-constroija_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-constroija_password}
-      - EMAIL_HOST=mailhog
-      - EMAIL_PORT=1025
     depends_on:
       db:
         condition: service_healthy
-      mailhog:
-        condition: service_started
-    networks:
-      - constroija_network
-
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: constroija_mailhog
-    ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # Web UI
     networks:
       - constroija_network
 
