@@ -60,26 +60,31 @@ def send_confirmation_email(user):
 
 def send_password_reset_email(user):
     """Send password reset token to user."""
-    token_obj = PasswordResetToken.objects.create(user=user)
-    reset_url = f"{settings.FRONTEND_URL}/reset-password/{token_obj.token}"
+    try:
+        token_obj = PasswordResetToken.objects.create(user=user)
+        reset_url = f"{settings.FRONTEND_URL}/reset-password/{token_obj.token}"
 
-    subject = "Recuperação de senha - ConstroiJa"
-    message = render_to_string(
-        "emails/password_reset.html",
-        {
-            "user": user,
-            "reset_url": reset_url,
-        },
-    )
+        subject = "Recuperação de senha - ConstroiJa"
+        message = render_to_string(
+            "emails/password_reset.html",
+            {
+                "user": user,
+                "reset_url": reset_url,
+            },
+        )
 
-    send_mail(
-        subject=subject,
-        message="",
-        html_message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+        send_mail(
+            subject=subject,
+            message="",
+            html_message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception:
+        logger.exception("Erro ao enviar email de recuperação para %s", user.email)
+        return False
 
 
 class ConsumerRegisterView(generics.CreateAPIView):
