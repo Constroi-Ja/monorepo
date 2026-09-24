@@ -179,7 +179,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 # Frontend URL for email links
-FRONTEND_URL = "http://localhost:3000"
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.constroija.com.br")
 
 # ─── Cloudinary ───────────────────────────────────────────────────────────────
 CLOUDINARY_STORAGE = {
