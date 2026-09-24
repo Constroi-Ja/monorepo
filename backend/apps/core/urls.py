@@ -43,6 +43,7 @@ from .views import (
 app_name = "core"
 
 urlpatterns = [
+    path("", health_check, name="root_health"),
     path("health/", health_check, name="health"),
     path("ready/", readiness_check, name="readiness"),
     path("stores/featured/", featured_stores, name="featured_stores"),
