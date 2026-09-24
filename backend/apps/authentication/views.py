@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -24,37 +26,43 @@ from .serializers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def send_confirmation_email(user):
     """Send email confirmation token to user."""
-    token_obj = EmailConfirmationToken.objects.create(user=user)
-    confirmation_url = f"{settings.FRONTEND_URL}/confirm-email/{token_obj.token}"
-    
-    subject = "Confirme seu email - ConstroiJa"
-    message = render_to_string(
-        "emails/email_confirmation.html",
-        {
-            "user": user,
-            "confirmation_url": confirmation_url,
-        },
-    )
-    
-    send_mail(
-        subject=subject,
-        message="",
-        html_message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+    try:
+        token_obj = EmailConfirmationToken.objects.create(user=user)
+        confirmation_url = f"{settings.FRONTEND_URL}/confirm-email/{token_obj.token}"
+
+        subject = "Confirme seu email - ConstroiJa"
+        message = render_to_string(
+            "emails/email_confirmation.html",
+            {
+                "user": user,
+                "confirmation_url": confirmation_url,
+            },
+        )
+
+        send_mail(
+            subject=subject,
+            message="",
+            html_message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception:
+        logger.exception("Erro ao enviar email de confirmação para %s", user.email)
+        return False
 
 
 def send_password_reset_email(user):
     """Send password reset token to user."""
     token_obj = PasswordResetToken.objects.create(user=user)
     reset_url = f"{settings.FRONTEND_URL}/reset-password/{token_obj.token}"
-    
+
     subject = "Recuperação de senha - ConstroiJa"
     message = render_to_string(
         "emails/password_reset.html",
@@ -63,7 +71,7 @@ def send_password_reset_email(user):
             "reset_url": reset_url,
         },
     )
-    
+
     send_mail(
         subject=subject,
         message="",
@@ -84,10 +92,11 @@ class ConsumerRegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        send_confirmation_email(user)
+        email_sent = send_confirmation_email(user)
         return Response(
             {
                 "message": "Cadastro realizado com sucesso. Por favor, confirme seu email.",
+                "confirmation_email_sent": email_sent,
                 "user": UserSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
@@ -149,11 +158,9 @@ def confirm_email(request):
         token = request.data.get("token")
     else:  # GET
         token = request.query_params.get("token")
-    
+
     if not token:
-        return Response(
-            {"error": "Token é obrigatório."}, status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"error": "Token é obrigatório."}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         token_obj = EmailConfirmationToken.objects.get(token=token)
@@ -170,13 +177,9 @@ def confirm_email(request):
         token_obj.used = True
         token_obj.save()
 
-        return Response(
-            {"message": "Email confirmado com sucesso."}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "Email confirmado com sucesso."}, status=status.HTTP_200_OK)
     except EmailConfirmationToken.DoesNotExist:
-        return Response(
-            {"error": "Token inválido."}, status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"error": "Token inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["POST"])
@@ -229,13 +232,9 @@ def confirm_password_reset(request):
         token_obj.used = True
         token_obj.save()
 
-        return Response(
-            {"message": "Senha alterada com sucesso."}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "Senha alterada com sucesso."}, status=status.HTTP_200_OK)
     except PasswordResetToken.DoesNotExist:
-        return Response(
-            {"error": "Token inválido."}, status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"error": "Token inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["GET"])
@@ -250,9 +249,7 @@ def me(request):
 @permission_classes([permissions.IsAuthenticated])
 def update_profile(request):
     """Update current user profile."""
-    serializer = UserSerializer(
-        request.user, data=request.data, partial=True
-    )
+    serializer = UserSerializer(request.user, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data)
@@ -329,6 +326,7 @@ def update_provider_profile(request):
     # Handle specialties (multipart individual values or legacy JSON string)
     if "specialties" in data:
         import json
+
         specialties_raw = request.data.getlist("specialties")
         if len(specialties_raw) == 1:
             try:
@@ -464,14 +462,11 @@ def admin_user_list(request):
 
     search = request.query_params.get("search")
     if search:
-        queryset = queryset.filter(
-            email__icontains=search
-        ) | queryset.filter(
-            provider_profile__full_name__icontains=search
-        ) | queryset.filter(
-            consumer_profile__full_name__icontains=search
-        ) | queryset.filter(
-            company_profile__company_name__icontains=search
+        queryset = (
+            queryset.filter(email__icontains=search)
+            | queryset.filter(provider_profile__full_name__icontains=search)
+            | queryset.filter(consumer_profile__full_name__icontains=search)
+            | queryset.filter(company_profile__company_name__icontains=search)
         )
 
     serializer = AdminUserListSerializer(queryset, many=True)

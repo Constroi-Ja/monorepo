@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -149,13 +150,25 @@ class ConsumerRegistrationSerializer(serializers.Serializer):
     cep = serializers.CharField(max_length=9)
     street = serializers.CharField(max_length=255)
     number = serializers.CharField(max_length=20)
-    complement = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
+    complement = serializers.CharField(
+        max_length=255, required=False, allow_blank=True, allow_null=True
+    )
     city = serializers.CharField(max_length=100)
     state = serializers.CharField(max_length=2)
     cpf = serializers.CharField(max_length=14)
     gender = serializers.CharField(max_length=1)
     phone = serializers.CharField(max_length=20)
     birth_date = serializers.DateField()
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Já existe um cadastro com este e-mail.")
+        return value
+
+    def validate_cpf(self, value):
+        if Consumer.objects.filter(cpf=value).exists():
+            raise serializers.ValidationError("Já existe um cadastro com este CPF.")
+        return value
 
     def validate(self, attrs):
         if attrs["password"] != attrs["confirm_password"]:
@@ -178,13 +191,24 @@ class ConsumerRegistrationSerializer(serializers.Serializer):
             "birth_date": validated_data.pop("birth_date"),
         }
         password = validated_data.pop("password")
-        user = User.objects.create_user(
-            username=validated_data["email"], user_type="consumer", **validated_data
-        )
-        user.set_password(password)
-        user.save()
-        Consumer.objects.create(user=user, **consumer_data)
-        return user
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=validated_data["email"], user_type="consumer", **validated_data
+                )
+                user.set_password(password)
+                user.save()
+                Consumer.objects.create(user=user, **consumer_data)
+                return user
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {
+                    "detail": (
+                        "Não foi possível concluir o cadastro. "
+                        "Verifique se o e-mail ou CPF já estão em uso."
+                    )
+                }
+            )
 
 
 class ProviderRegistrationSerializer(serializers.Serializer):
@@ -202,7 +226,9 @@ class ProviderRegistrationSerializer(serializers.Serializer):
     cep = serializers.CharField(max_length=9)
     street = serializers.CharField(max_length=255)
     number = serializers.CharField(max_length=20)
-    complement = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
+    complement = serializers.CharField(
+        max_length=255, required=False, allow_blank=True, allow_null=True
+    )
     city = serializers.CharField(max_length=100)
     state = serializers.CharField(max_length=2)
     cpf = serializers.CharField(max_length=14)
@@ -257,7 +283,9 @@ class CompanyRegistrationSerializer(serializers.Serializer):
     cep = serializers.CharField(max_length=9)
     street = serializers.CharField(max_length=255)
     number = serializers.CharField(max_length=20)
-    complement = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
+    complement = serializers.CharField(
+        max_length=255, required=False, allow_blank=True, allow_null=True
+    )
     city = serializers.CharField(max_length=100)
     state = serializers.CharField(max_length=2)
     cnpj = serializers.CharField(max_length=18)
@@ -332,9 +360,19 @@ class AdminUserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "email", "username", "first_name", "last_name",
-            "user_type", "is_verified", "is_active", "date_joined",
-            "profile_photo_url", "consumer_profile", "provider_profile", "company_profile",
+            "id",
+            "email",
+            "username",
+            "first_name",
+            "last_name",
+            "user_type",
+            "is_verified",
+            "is_active",
+            "date_joined",
+            "profile_photo_url",
+            "consumer_profile",
+            "provider_profile",
+            "company_profile",
         ]
 
 
