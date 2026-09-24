@@ -139,7 +139,7 @@ export default function ProviderDashboard() {
         <StoreCard
           key={store.id}
           store={store}
-          onPress={() => router.push(`/(app)/(provider)/stores/index`)}
+          onPress={() => router.push(`/(app)/(provider)/stores/${store.id}` as any)}
         />
       ))}
     </ScrollView>

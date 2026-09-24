@@ -13,7 +13,6 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/theme';
 import { ordersApi } from '@/api/orders';
-import { adminApi } from '@/api/admin';
 import { Order } from '@/types';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/shared/Button';
@@ -62,9 +61,14 @@ export default function OrderDetailScreen() {
         style: 'destructive',
         onPress: async () => {
           setCancelling(true);
-          await ordersApi.updateStatus(Number(orderId), 'cancelado');
-          await load();
-          setCancelling(false);
+          try {
+            await ordersApi.updateStatus(Number(orderId), 'cancelado');
+            await load();
+          } catch (e: any) {
+            Alert.alert('Erro', e?.message || 'Não foi possível cancelar o pedido.');
+          } finally {
+            setCancelling(false);
+          }
         },
       },
     ]);
@@ -142,7 +146,7 @@ export default function OrderDetailScreen() {
               />
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{item.item_name}</Text>
-                <Text style={styles.itemBrand}>{item.item_marca}</Text>
+                {item.item_marca ? <Text style={styles.itemBrand}>{item.item_marca}</Text> : null}
               </View>
               <View style={styles.itemMeta}>
                 <Text style={styles.itemQty}>x{item.quantity}</Text>

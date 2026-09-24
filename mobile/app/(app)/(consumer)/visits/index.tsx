@@ -19,6 +19,7 @@ import { LoadingScreen } from '@/components/shared/LoadingScreen';
 import { formatDateOnly } from '@/utils/date';
 
 const statusColors: Record<string, string> = {
+  awaiting_payment: Colors.neutral[400],
   pending: Colors.info.base,
   accepted: Colors.brand[500],
   completed: Colors.success.base,

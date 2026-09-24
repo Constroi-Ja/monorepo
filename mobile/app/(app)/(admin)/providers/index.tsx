@@ -78,7 +78,7 @@ export default function AdminProvidersScreen() {
               <Image source={item.image_url ? { uri: item.image_url } : require('@/assets/placeholder-avatar.png')} style={styles.avatar} />
               <View style={styles.info}>
                 <Text style={styles.name}>{item.full_name}</Text>
-                <Text style={styles.specialties} numberOfLines={1}>{item.specialties.join(', ')}</Text>
+                <Text style={styles.specialties} numberOfLines={1}>{(item.specialties ?? []).join(', ')}</Text>
                 <Text style={styles.rating}>{Number(item.rating).toFixed(1)} • {Number(item.distance).toFixed(1)} km</Text>
               </View>
               {!item.verified && (

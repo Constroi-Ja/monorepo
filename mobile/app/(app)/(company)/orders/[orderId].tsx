@@ -97,7 +97,7 @@ export default function CompanyOrderDetailScreen() {
               />
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{item.item_name}</Text>
-                <Text style={styles.itemBrand}>{item.item_marca}</Text>
+                {item.item_marca ? <Text style={styles.itemBrand}>{item.item_marca}</Text> : null}
               </View>
               <View>
                 <Text style={styles.itemQty}>x{item.quantity}</Text>

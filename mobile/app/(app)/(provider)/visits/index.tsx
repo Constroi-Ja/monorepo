@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ScrollView,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/theme';
 import { visitsApi } from '@/api/visits';
@@ -88,9 +89,13 @@ export default function ProviderVisitsScreen() {
         {
           text: 'Confirmar',
           onPress: async () => {
-            await visitsApi.update(visit.id, { action });
-            addToast(action === 'accept' ? 'Visita aceita!' : 'Visita recusada.');
-            await load();
+            try {
+              await visitsApi.update(visit.id, { action });
+              addToast(action === 'accept' ? 'Visita aceita!' : 'Visita recusada.');
+              await load();
+            } catch (e: any) {
+              addToast(e?.message || 'Erro ao atualizar visita.', 'error');
+            }
           },
         },
       ]
@@ -103,9 +108,13 @@ export default function ProviderVisitsScreen() {
       {
         text: 'Concluir',
         onPress: async () => {
-          await visitsApi.complete(visit.id);
-          addToast('Visita marcada como concluída!');
-          await load();
+          try {
+            await visitsApi.complete(visit.id);
+            addToast('Visita marcada como concluída!');
+            await load();
+          } catch (e: any) {
+            addToast(e?.message || 'Erro ao concluir visita.', 'error');
+          }
         },
       },
     ]);
@@ -184,11 +193,32 @@ export default function ProviderVisitsScreen() {
               )}
 
               {activeTab === 'accepted' && (
-                <Button
-                  onPress={() => handleComplete(item)}
-                  label="Marcar como concluída"
-                  size="sm"
-                />
+                <View style={styles.acceptedActions}>
+                  <Button
+                    onPress={() => router.push(`/(app)/(provider)/visits/${item.id}` as any)}
+                    label="Ver detalhes / Chat"
+                    variant="outline"
+                    size="sm"
+                    style={{ flex: 1 }}
+                    fullWidth={false}
+                  />
+                  <Button
+                    onPress={() => handleComplete(item)}
+                    label="Concluída"
+                    size="sm"
+                    style={{ flex: 1 }}
+                    fullWidth={false}
+                  />
+                </View>
+              )}
+
+              {(activeTab === 'completed' || activeTab === 'refused' || activeTab === 'cancelled') && (
+                <Pressable
+                  onPress={() => router.push(`/(app)/(provider)/visits/${item.id}` as any)}
+                  style={styles.detailLink}
+                >
+                  <Text style={styles.detailLinkText}>Ver detalhes →</Text>
+                </Pressable>
               )}
             </View>
           )}
@@ -219,4 +249,7 @@ const styles = StyleSheet.create({
   countdown: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.neutral[600] },
   countdownCritical: { color: Colors.error.base },
   actions: { flexDirection: 'row', gap: Spacing[3] },
+  acceptedActions: { flexDirection: 'row', gap: Spacing[2] },
+  detailLink: { alignItems: 'flex-end' },
+  detailLinkText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.brand[500] },
 });

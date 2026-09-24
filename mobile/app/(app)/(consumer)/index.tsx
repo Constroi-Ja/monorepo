@@ -167,7 +167,7 @@ export default function ConsumerDashboard() {
             renderItem={({ item }) => (
               <ProviderCard
                 provider={item}
-                onPress={() => router.push('/(app)/(consumer)/providers/index')}
+                onPress={() => router.push(`/(app)/(consumer)/providers/${item.id}` as any)}
               />
             )}
             horizontal

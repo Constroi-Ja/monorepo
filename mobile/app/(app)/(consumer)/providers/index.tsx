@@ -8,6 +8,7 @@ import {
   Pressable,
   TextInput,
 } from 'react-native';
+import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/theme';
@@ -86,7 +87,7 @@ export default function ProvidersScreen() {
           data={providers}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-            <ProviderCard provider={item} onPress={() => {}} />
+            <ProviderCard provider={item} onPress={() => router.push(`/(app)/(consumer)/providers/${item.id}` as any)} />
           )}
           estimatedItemSize={90}
           numColumns={2}

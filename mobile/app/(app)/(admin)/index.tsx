@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,21 +16,29 @@ import { AdminStats, Provider } from '@/types';
 import { LoadingScreen } from '@/components/shared/LoadingScreen';
 import { AppIcon, AppIconName } from '@/components/shared/AppIcon';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuthStore } from '@/store/authStore';
 
 export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { logout, user } = useAuthStore();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [pendingProviders, setPendingProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = async () => {
+    setLoadError(false);
     const [statsRes, providersRes] = await Promise.allSettled([
       adminApi.getStats(),
       adminApi.getProviders({ verified: false }),
     ]);
-    if (statsRes.status === 'fulfilled' && statsRes.value.data) setStats(statsRes.value.data);
+    if (statsRes.status === 'fulfilled' && statsRes.value.data) {
+      setStats(statsRes.value.data);
+    } else if (statsRes.status === 'rejected' || (statsRes.status === 'fulfilled' && !statsRes.value.data)) {
+      setLoadError(true);
+    }
     if (providersRes.status === 'fulfilled' && providersRes.value.data) setPendingProviders(providersRes.value.data);
   };
 
@@ -54,6 +63,12 @@ export default function AdminDashboard() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand[500]} />}
     >
       <Text style={styles.title}>Painel Admin</Text>
+
+      {loadError && (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>Não foi possível carregar as estatísticas. Puxe para atualizar.</Text>
+        </View>
+      )}
 
       <View style={styles.grid}>
         {statItems.map((item) => (
@@ -97,6 +112,25 @@ export default function AdminDashboard() {
           </Pressable>
         ))}
       </View>
+
+      {/* User info + logout */}
+      <View style={styles.userCard}>
+        <View style={styles.userInfo}>
+          <Text style={styles.userLabel}>Logado como</Text>
+          <Text style={styles.userEmail}>{user?.email}</Text>
+        </View>
+        <Pressable
+          onPress={() =>
+            Alert.alert('Sair', 'Deseja sair da conta admin?', [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Sair', style: 'destructive', onPress: logout },
+            ])
+          }
+          style={styles.logoutBtn}
+        >
+          <Text style={styles.logoutText}>Sair</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -136,4 +170,32 @@ const styles = StyleSheet.create({
   },
   quickLinkLabel: { flex: 1, fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.neutral[0] },
   quickLinkArrow: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.neutral[500] },
+  userCard: {
+    backgroundColor: Colors.neutral[800],
+    borderRadius: Radius.lg,
+    padding: Spacing[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+    borderWidth: 1,
+    borderColor: Colors.neutral[700],
+  },
+  userInfo: { flex: 1, gap: 2 },
+  userLabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.neutral[500] },
+  userEmail: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.neutral[200] },
+  logoutBtn: {
+    backgroundColor: Colors.error.dark,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[2],
+  },
+  logoutText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.neutral[0] },
+  errorBox: {
+    backgroundColor: Colors.error.light,
+    borderRadius: Radius.lg,
+    padding: Spacing[4],
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.error.base,
+  },
+  errorText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.error.dark },
 });

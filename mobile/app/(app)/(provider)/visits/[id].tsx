@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   TextInput,
@@ -22,20 +21,19 @@ import { Button } from '@/components/shared/Button';
 import { LoadingScreen } from '@/components/shared/LoadingScreen';
 import { InfoBox } from '@/components/shared/InfoBox';
 import { useVisitMessages } from '@/hooks/useVisitMessages';
-import { useAuthStore } from '@/store/authStore';
 import { formatDateTime, formatDateOnly } from '@/utils/date';
+import { useUiStore } from '@/store/uiStore';
 
-export default function VisitDetailScreen() {
+export default function ProviderVisitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { user } = useAuthStore();
+  const addToast = useUiStore((s) => s.addToast);
   const [visit, setVisit] = useState<TechnicalVisitRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [messageText, setMessageText] = useState('');
-  const [cancelling, setCancelling] = useState(false);
+  const [acting, setActing] = useState(false);
 
-  // Passa o ID diretamente (disponível imediatamente via URL param)
   const { messages, sendMessage, loadInitial, myName } = useVisitMessages(Number(id));
 
   const load = async () => {
@@ -54,6 +52,27 @@ export default function VisitDetailScreen() {
     setRefreshing(false);
   };
 
+  const handleComplete = () => {
+    Alert.alert('Concluir visita', 'Confirmar a conclusão desta visita?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Concluir',
+        onPress: async () => {
+          setActing(true);
+          try {
+            await visitsApi.complete(Number(id));
+            addToast('Visita concluída!');
+            await load();
+          } catch (e: any) {
+            addToast(e?.message || 'Erro ao concluir visita.', 'error');
+          } finally {
+            setActing(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const handleCancel = () => {
     Alert.alert('Cancelar visita', 'Tem certeza que deseja cancelar esta visita?', [
       { text: 'Não', style: 'cancel' },
@@ -61,14 +80,15 @@ export default function VisitDetailScreen() {
         text: 'Cancelar visita',
         style: 'destructive',
         onPress: async () => {
-          setCancelling(true);
+          setActing(true);
           try {
             await visitsApi.cancel(Number(id));
+            addToast('Visita cancelada.');
             await load();
           } catch (e: any) {
-            Alert.alert('Erro', e?.message || 'Não foi possível cancelar a visita.');
+            addToast(e?.message || 'Erro ao cancelar visita.', 'error');
           } finally {
-            setCancelling(false);
+            setActing(false);
           }
         },
       },
@@ -83,11 +103,13 @@ export default function VisitDetailScreen() {
   };
 
   if (loading) return <LoadingScreen />;
-  if (!visit) return (
-    <View style={styles.root}>
-      <InfoBox type="error" message="Visita não encontrada." style={{ margin: 16 }} />
-    </View>
-  );
+  if (!visit) {
+    return (
+      <View style={styles.root}>
+        <InfoBox type="error" message="Visita não encontrada." style={{ margin: 16 }} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -100,7 +122,7 @@ export default function VisitDetailScreen() {
           <Text style={styles.back}>‹ Voltar</Text>
         </Pressable>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Visita com {visit.provider_name}</Text>
+          <Text style={styles.title} numberOfLines={1}>Visita com {visit.consumer_name}</Text>
           <StatusBadge status={visit.status} />
         </View>
       </View>
@@ -111,25 +133,34 @@ export default function VisitDetailScreen() {
       >
         {/* Visit Info */}
         <View style={styles.section}>
+          <InfoRow label="Cliente" value={visit.consumer_name} />
           <InfoRow label="Endereço" value={visit.address} />
           {visit.preferred_date && <InfoRow label="Data preferencial" value={formatDateOnly(visit.preferred_date)} />}
-          {visit.notes && <InfoRow label="Anotações" value={visit.notes} />}
+          {visit.notes && <InfoRow label="Descrição" value={visit.notes} />}
         </View>
 
-        {/* Cancel */}
+        {/* Actions */}
         {(visit.status === 'pending' || visit.status === 'accepted') && (
           <Button
             onPress={handleCancel}
             label="Cancelar visita"
             variant="destructive"
-            loading={cancelling}
+            loading={acting}
+          />
+        )}
+
+        {visit.status === 'accepted' && (
+          <Button
+            onPress={handleComplete}
+            label="Marcar como concluída"
+            loading={acting}
           />
         )}
 
         {/* Chat */}
         {(visit.status === 'accepted' || visit.status === 'completed') && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Conversa com prestador</Text>
+            <Text style={styles.sectionTitle}>Conversa com cliente</Text>
             {messages.length === 0 ? (
               <Text style={styles.noMessages}>Nenhuma mensagem ainda.</Text>
             ) : (
@@ -180,6 +211,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </View>
   );
 }
+
 const infoStyles = StyleSheet.create({
   row: { gap: 2 },
   label: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.neutral[500] },

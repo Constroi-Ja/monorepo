@@ -69,7 +69,8 @@ export default function CheckoutScreen() {
 
   const handleApproved = () => {
     resetCart();
-    router.replace(`/(app)/(consumer)/orders/${orderId}`);
+    const profile = user?.user_type === 'provider' ? 'provider' : 'consumer';
+    router.replace(`/(app)/(${profile})/orders/${orderId}` as any);
   };
 
   const handleCancelled = () => {
