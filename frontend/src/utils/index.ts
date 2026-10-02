@@ -41,3 +41,23 @@ export function formatPhone(phone: string): string {
   }
   return phone;
 }
+
+/**
+ * Fix Cloudinary PDF URLs for criminal records
+ * Adds .pdf extension and/or converts /image/upload to /raw/upload
+ */
+export function fixCloudinaryPdfUrl(url: string | null): string | null {
+  if (!url) return null;
+  
+  // If it's a criminal record without .pdf extension, add it
+  if (url.includes("criminal_records") && !url.endsWith(".pdf")) {
+    url = url + ".pdf";
+  }
+  
+  // Convert /image/upload to /raw/upload for PDFs
+  if (url.includes("/image/upload/") && url.includes("criminal_records")) {
+    url = url.replace("/image/upload/", "/raw/upload/");
+  }
+  
+  return url;
+}

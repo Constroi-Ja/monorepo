@@ -255,7 +255,7 @@ export default function ProviderVisitsPage() {
                                   onChange={(e) => setNewMessage((prev) => ({ ...prev, [visit.id]: e.target.value }))}
                                   onKeyDown={(e) => { if (e.key === "Enter") sendMessage(visit.id); }}
                                   placeholder="Mensagem..."
-                                  className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-orange-400 bg-white"
+                                  className="flex-1 border border-gray-300 bg-gray-50 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                                 />
                                 <button
                                   onClick={() => sendMessage(visit.id)}

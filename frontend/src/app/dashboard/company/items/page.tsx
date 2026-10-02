@@ -305,7 +305,7 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
               placeholder="Ex: Cimento CP II 50kg"
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
@@ -318,7 +318,7 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
                 type="text"
                 value={formData.marca}
                 onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
                 placeholder="Ex: Votorantim"
               />
             </div>
@@ -330,7 +330,7 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
                 min="0"
                 value={formData.peso}
                 onChange={(e) => setFormData({ ...formData, peso: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
                 placeholder="Ex: 1.50"
               />
             </div>
@@ -341,7 +341,7 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 h-20 resize-none"
+              className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent h-20 resize-none"
               placeholder="Descreva o produto..."
             />
           </div>
@@ -355,7 +355,7 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
                 min="0"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
                 placeholder="0,00"
               />
               {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
@@ -366,7 +366,7 @@ function ItemEditModal({ item, onClose, onSave }: ItemEditModalProps) {
               <select
                 value={formData.shipping_type}
                 onChange={(e) => setFormData({ ...formData, shipping_type: e.target.value as any })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
               >
                 {shippingTypeOptions.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
