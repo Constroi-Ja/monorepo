@@ -206,14 +206,14 @@ export default function MaterialsPage() {
 
       <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
-      <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 p-3 sm:p-4 lg:p-8 mt-16 md:mt-0 min-w-0">
+        <div className="max-w-7xl mx-auto w-full">
           <Breadcrumb items={breadcrumb} />
 
           {/* Header */}
-          <div className="flex items-start justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Comprar Material</h1>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Comprar Material</h1>
               <p className="text-sm text-gray-500 mt-0.5">
                 {tab === "lojas"
                   ? "Encontre lojas disponíveis perto de você."
@@ -222,7 +222,7 @@ export default function MaterialsPage() {
             </div>
             <button
               onClick={() => router.push("/cart")}
-              className="flex items-center gap-2 bg-orange-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-orange-600 transition-colors flex-shrink-0 shadow-sm"
+              className="flex items-center justify-center gap-2 bg-orange-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-orange-600 transition-colors flex-shrink-0 shadow-sm w-full sm:w-auto"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -232,7 +232,7 @@ export default function MaterialsPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit mb-6">
+          <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-full sm:w-fit mb-6 overflow-x-auto">
             {(["lojas", "produtos"] as Tab[]).map((t) => (
               <button
                 key={t}
@@ -322,7 +322,7 @@ export default function MaterialsPage() {
                   />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                   {filteredStores.map((store) => (
                     <StoreCard
                       key={store.id}
@@ -359,7 +359,7 @@ export default function MaterialsPage() {
                   ) : storeItems.length === 0 ? (
                     <EmptyState title="Sem itens disponíveis" description="Esta loja ainda não possui produtos." />
                   ) : (
-                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                       {storeItems.map((item) => (
                         <ItemCard
                           key={item.id}
@@ -393,7 +393,7 @@ export default function MaterialsPage() {
                   />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                   {filteredItems.map((item) => (
                     <ItemCard
                       key={item.id}
@@ -427,7 +427,7 @@ interface StoreCardProps {
 function StoreCard({ store, selected, loading, onSelect, onNavigate, onShowReviews }: StoreCardProps) {
   return (
     <article
-      className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
+      className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all hover:shadow-md min-w-0 ${
         selected ? "border-orange-400 ring-2 ring-orange-200" : "border-gray-100"
       }`}
     >
@@ -447,10 +447,10 @@ function StoreCard({ store, selected, loading, onSelect, onNavigate, onShowRevie
           {store.is_open ? "Aberta" : "Fechada"}
         </span>
       </div>
-      <div className="p-4">
-        <h2 className="font-semibold text-gray-900 leading-tight">{store.company_name}</h2>
-        <p className="text-xs text-gray-500 mt-0.5 mb-3">{store.category}</p>
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+      <div className="p-4 min-w-0">
+        <h2 className="font-semibold text-gray-900 leading-tight break-words">{store.company_name}</h2>
+        <p className="text-xs text-gray-500 mt-0.5 mb-3 break-words">{store.category}</p>
+        <div className="flex items-center justify-between gap-2 text-xs text-gray-500 mb-4 flex-wrap">
           <span className="flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -498,14 +498,14 @@ function ItemCard({ item, adding, showCompany = false, onAdd }: ItemCardProps) {
   };
 
   return (
-    <article className="bg-white border border-gray-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all flex flex-col">
+    <article className="bg-white border border-gray-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all flex flex-col min-w-0 h-full">
       {item.photo_url && (
         <div className="h-28 rounded-xl overflow-hidden mb-3 bg-gray-100 -mx-0">
           <img src={item.photo_url} alt={item.name} className="w-full h-full object-cover" />
         </div>
       )}
       <div className="flex-1">
-        <h3 className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</h3>
+        <h3 className="font-semibold text-gray-900 text-sm leading-tight break-words">{item.name}</h3>
         {(item.marca || item.peso) && (
           <p className="text-xs text-gray-400 mt-0.5">
             {item.marca}{item.marca && item.peso ? " · " : ""}{item.peso ? `${item.peso} kg` : ""}
@@ -527,14 +527,14 @@ function ItemCard({ item, adding, showCompany = false, onAdd }: ItemCardProps) {
           </span>
         )}
       </div>
-      <div className="flex items-center justify-between mt-2">
-        <span className="font-bold text-orange-500 text-sm">
+      <div className="flex items-center justify-between gap-2 mt-2">
+        <span className="font-bold text-orange-500 text-sm whitespace-nowrap">
           R$ {Number(item.price).toFixed(2)}
         </span>
         <button
           onClick={() => onAdd(item.id)}
           disabled={adding}
-          className="bg-orange-500 text-white text-xs font-medium rounded-lg px-3 py-1.5 hover:bg-orange-600 transition-colors disabled:opacity-60 flex items-center gap-1"
+          className="bg-orange-500 text-white text-xs font-medium rounded-lg px-3 py-1.5 hover:bg-orange-600 transition-colors disabled:opacity-60 flex items-center gap-1 shrink-0"
         >
           {adding ? (
             <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">

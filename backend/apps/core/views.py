@@ -114,6 +114,22 @@ def is_company_open(company: Company) -> bool:
     return now_time >= company.opening_time or now_time <= company.closing_time
 
 
+def get_user_delivery_cep(user) -> str:
+    if hasattr(user, "consumer_profile"):
+        return user.consumer_profile.cep or ""
+    if hasattr(user, "provider_profile"):
+        return user.provider_profile.cep or ""
+    return ""
+
+
+def is_company_within_delivery_radius(user, company: Company) -> bool:
+    user_cep = get_user_delivery_cep(user)
+    if not user_cep:
+        return True
+    distance = estimate_distance_km(user_cep, company.cep)
+    return distance <= float(company.display_radius_km or 0)
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
@@ -196,20 +212,16 @@ class ItemDetailView(generics.RetrieveUpdateDestroyAPIView):
 def featured_stores(request):
     """Get featured stores."""
     user = request.user
-    user_cep = ""
-    if hasattr(user, "consumer_profile"):
-        user_cep = user.consumer_profile.cep
-    elif hasattr(user, "provider_profile"):
-        user_cep = user.provider_profile.cep
+    user_cep = get_user_delivery_cep(user)
 
     companies = Company.objects.all().select_related("user")
     stores = []
     for company in companies:
         if not is_company_open(company):
             continue
-        distance = estimate_distance_km(user_cep, company.cep)
-        if distance > float(company.display_radius_km):
+        if not is_company_within_delivery_radius(user, company):
             continue
+        distance = estimate_distance_km(user_cep, company.cep)
         avg_minutes_per_km = float(company.avg_minutes_per_km or 4)
         eta_minutes = max(5, int(round(distance * avg_minutes_per_km)))
         image_url = None
@@ -332,17 +344,23 @@ class PublicItemListView(generics.ListAPIView):
     serializer_class = PublicItemSerializer
 
     def get_queryset(self):
-        open_company_ids = [
-            company.id
-            for company in Company.objects.all()
-            if is_company_open(company)
-        ]
+        allowed_company_ids = []
+        user = self.request.user
+        user_cep = get_user_delivery_cep(user)
+
+        for company in Company.objects.all().select_related("user"):
+            if not is_company_open(company):
+                continue
+            if user_cep and not is_company_within_delivery_radius(user, company):
+                continue
+            allowed_company_ids.append(company.id)
+
         queryset = (
             Item.objects.filter(is_for_sale=True, company__company_profile__isnull=False)
             .select_related("company", "company__company_profile")
             .order_by("-created_at")
         )
-        queryset = queryset.filter(company__company_profile__id__in=open_company_ids)
+        queryset = queryset.filter(company__company_profile__id__in=allowed_company_ids)
         company_id = self.request.query_params.get("company_id")
         if company_id:
             queryset = queryset.filter(company__company_profile__id=company_id)

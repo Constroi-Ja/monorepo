@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.authentication.models import Company
+from apps.authentication.models import Company, Consumer
 
 from .models import Item
 from .views import is_company_open
@@ -123,3 +123,32 @@ class PublicStoreAvailabilityTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, [])
+
+    @patch(
+        "apps.core.views.timezone.localtime",
+        return_value=datetime(2026, 10, 1, 21, 35),
+    )
+    def test_items_outside_delivery_radius_are_hidden(self, localtime):
+        Consumer.objects.create(
+            user=self.consumer,
+            full_name="Consumidor Teste",
+            cep="99999999",
+            street="Rua do Consumidor",
+            number="123",
+            city="São Paulo",
+            state="SP",
+            cpf="11122233344",
+            gender="M",
+            phone="11999999999",
+            birth_date="1998-01-01",
+        )
+        self.company.display_radius_km = 5
+        self.company.save(update_fields=["display_radius_km"])
+
+        stores_response = self.client.get("/api/core/stores/featured/")
+        items_response = self.client.get("/api/core/items/public/")
+
+        self.assertEqual(stores_response.status_code, 200)
+        self.assertEqual(items_response.status_code, 200)
+        self.assertEqual(stores_response.data, [])
+        self.assertEqual(items_response.data, [])
