@@ -107,7 +107,11 @@ def is_company_open(company: Company) -> bool:
     if not company.opening_time or not company.closing_time:
         return True
     now_time = timezone.localtime().time()
-    return company.opening_time <= now_time <= company.closing_time
+    if company.opening_time == company.closing_time:
+        return True
+    if company.opening_time < company.closing_time:
+        return company.opening_time <= now_time <= company.closing_time
+    return now_time >= company.opening_time or now_time <= company.closing_time
 
 
 @api_view(["GET"])
@@ -201,6 +205,8 @@ def featured_stores(request):
     companies = Company.objects.all().select_related("user")
     stores = []
     for company in companies:
+        if not is_company_open(company):
+            continue
         distance = estimate_distance_km(user_cep, company.cep)
         if distance > float(company.display_radius_km):
             continue
@@ -226,7 +232,7 @@ def featured_stores(request):
                 "distance": distance,
                 "rating": float(company.rating_average or 0),
                 "rating_count": company.rating_count,
-                "is_open": is_company_open(company),
+                "is_open": True,
                 "opening_time": company.opening_time.strftime("%H:%M") if company.opening_time else None,
                 "closing_time": company.closing_time.strftime("%H:%M") if company.closing_time else None,
                 "eta_minutes": eta_minutes,
@@ -287,6 +293,8 @@ def stores_for_provider(request):
     user_cep = request.user.provider_profile.cep
     stores = []
     for company in Company.objects.all().select_related("user"):
+        if not is_company_open(company):
+            continue
         distance = estimate_distance_km(user_cep, company.cep)
         if distance > float(company.display_radius_km):
             continue
@@ -310,7 +318,7 @@ def stores_for_provider(request):
                 "distance": distance,
                 "rating": float(company.rating_average or 0),
                 "rating_count": company.rating_count,
-                "is_open": is_company_open(company),
+                "is_open": True,
                 "eta_minutes": max(5, int(round(distance * float(company.avg_minutes_per_km or 4)))),
                 "image_url": image_url,
             }
@@ -324,11 +332,17 @@ class PublicItemListView(generics.ListAPIView):
     serializer_class = PublicItemSerializer
 
     def get_queryset(self):
+        open_company_ids = [
+            company.id
+            for company in Company.objects.all()
+            if is_company_open(company)
+        ]
         queryset = (
             Item.objects.filter(is_for_sale=True, company__company_profile__isnull=False)
             .select_related("company", "company__company_profile")
             .order_by("-created_at")
         )
+        queryset = queryset.filter(company__company_profile__id__in=open_company_ids)
         company_id = self.request.query_params.get("company_id")
         if company_id:
             queryset = queryset.filter(company__company_profile__id=company_id)
@@ -1336,7 +1350,10 @@ def store_detail(request, store_id: int):
         except Exception:
             pass
 
-    items = Item.objects.filter(company=company.user)
+    items = Item.objects.filter(
+        company=company.user,
+        is_for_sale=True,
+    ) if is_company_open(company) else Item.objects.none()
     items_data = ItemSerializer(items, many=True, context={"request": request}).data
 
     return Response({

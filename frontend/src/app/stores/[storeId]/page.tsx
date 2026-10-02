@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { StoreReviewsModal } from "@/components/modals/StoreReviewsModal";
 import { apiClient } from "@/lib/api-client";
+import { normalizeTime } from "@/utils/formatters";
 
 interface StoreItem {
   id: number;
@@ -178,7 +179,7 @@ export default function StoreProfilePage() {
                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                {store.opening_time ? store.opening_time.slice(0, 5) : "?"} – {store.closing_time ? store.closing_time.slice(0, 5) : "?"}
+                {store.opening_time ? normalizeTime(store.opening_time) : "?"} – {store.closing_time ? normalizeTime(store.closing_time) : "?"}
               </span>
             )}
 

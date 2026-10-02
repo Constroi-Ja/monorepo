@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { TimeInput } from "@/components/ui/TimeInput";
 import { apiClient } from "@/lib/api-client";
+import { isValidTime } from "@/utils/formatters";
 
 const pixKeyTypes = [
   { value: "", label: "Selecione o tipo de chave" },
@@ -37,6 +39,10 @@ export function CompanyOnboardingModal({ onComplete }: Props) {
 
   const handleSubmit = async () => {
     if (!isComplete) return;
+    if (!isValidTime(formData.opening_time) || !isValidTime(formData.closing_time)) {
+      setError("Informe os horários no formato 24h, por exemplo 08:00.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
@@ -98,19 +104,17 @@ export function CompanyOnboardingModal({ onComplete }: Props) {
               Horário de Funcionamento
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <Input
+              <TimeInput
                 label="Abertura"
                 showRequired
-                type="time"
                 value={formData.opening_time}
-                onChange={(e) => setFormData({ ...formData, opening_time: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, opening_time: value })}
               />
-              <Input
+              <TimeInput
                 label="Fechamento"
                 showRequired
-                type="time"
                 value={formData.closing_time}
-                onChange={(e) => setFormData({ ...formData, closing_time: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, closing_time: value })}
               />
             </div>
           </div>

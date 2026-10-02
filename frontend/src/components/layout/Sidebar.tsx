@@ -277,7 +277,7 @@ export function Sidebar({ userName, userInitial, userPhoto }: SidebarProps) {
           </div>
           {!isCollapsed && (
             <span className="text-white text-lg font-bold tracking-tight whitespace-nowrap">
-              Constróijá
+              Constrói já
             </span>
           )}
         </div>
