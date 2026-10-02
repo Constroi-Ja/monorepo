@@ -7,7 +7,6 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { apiClient } from "@/lib/api-client";
-import { fixCloudinaryPdfUrl } from "@/utils";
 
 interface AdminProvider {
   id: number;
@@ -208,7 +207,7 @@ function AdminProvidersPageContent() {
                 <p className="text-xs text-gray-400 mb-2">Antecedentes Criminais</p>
                 {selected.criminal_record_url ? (
                   <a
-                    href={fixCloudinaryPdfUrl(selected.criminal_record_url) || ""}
+                    href={selected.criminal_record_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-orange-500 font-medium hover:text-orange-600 transition-colors text-sm"
