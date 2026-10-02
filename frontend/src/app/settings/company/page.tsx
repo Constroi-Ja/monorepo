@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { TimeInput } from "@/components/ui/TimeInput";
 import { apiClient } from "@/lib/api-client";
-import { formatCEP, formatCNPJ, formatPhone } from "@/utils/formatters";
+import { formatCEP, formatCNPJ, formatPhone, isValidTime, normalizeTime } from "@/utils/formatters";
 
 const states = [
   { value: "", label: "Selecione o estado" },
@@ -113,8 +114,8 @@ export default function CompanySettingsPage() {
         complement: p.complement || "",
         city: p.city || "",
         state: p.state || "",
-        opening_time: p.opening_time || "",
-        closing_time: p.closing_time || "",
+        opening_time: normalizeTime(p.opening_time),
+        closing_time: normalizeTime(p.closing_time),
         display_radius_km: String(p.display_radius_km || 20),
         avg_minutes_per_km: String(p.avg_minutes_per_km || 4),
         pix_key_type: p.pix_key_type || "",
@@ -151,6 +152,10 @@ export default function CompanySettingsPage() {
       case "localizacao":
         if (!formData.opening_time || !formData.closing_time) {
           setErrorMessage("Horário de abertura e fechamento são obrigatórios.");
+          return null;
+        }
+        if (!isValidTime(formData.opening_time) || !isValidTime(formData.closing_time)) {
+          setErrorMessage("Informe os horários no formato 24h, por exemplo 08:00.");
           return null;
         }
         return {
@@ -340,8 +345,8 @@ export default function CompanySettingsPage() {
                 <Select label="Estado" options={states} value={formData.state} onChange={(e) => update("state", e.target.value)} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                <Input label="Horário de abertura" showRequired type="time" value={formData.opening_time} onChange={(e) => update("opening_time", e.target.value)} />
-                <Input label="Horário de fechamento" showRequired type="time" value={formData.closing_time} onChange={(e) => update("closing_time", e.target.value)} />
+                <TimeInput label="Horário de abertura" showRequired value={formData.opening_time} onChange={(value) => update("opening_time", value)} />
+                <TimeInput label="Horário de fechamento" showRequired value={formData.closing_time} onChange={(value) => update("closing_time", value)} />
                 <Input label="Distância de exibição (km)" type="number" value={formData.display_radius_km} onChange={(e) => update("display_radius_km", e.target.value)} />
                 <Input label="Tempo médio por km (min)" type="number" value={formData.avg_minutes_per_km} onChange={(e) => update("avg_minutes_per_km", e.target.value)} />
               </div>

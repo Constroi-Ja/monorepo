@@ -60,6 +60,7 @@ def send_confirmation_email(user):
 
 def send_password_reset_email(user):
     """Send password reset token to user."""
+    token_obj = None
     try:
         token_obj = PasswordResetToken.objects.create(user=user)
         reset_url = f"{settings.FRONTEND_URL}/reset-password/{token_obj.token}"
@@ -83,6 +84,9 @@ def send_password_reset_email(user):
         )
         return True
     except Exception:
+        if token_obj is not None:
+            token_obj.used = True
+            token_obj.save(update_fields=["used"])
         logger.exception("Erro ao enviar email de recuperação para %s", user.email)
         return False
 
@@ -196,12 +200,14 @@ def request_password_reset(request):
 
     email = serializer.validated_data["email"]
     try:
-        user = User.objects.get(email=email)
+        user = User.objects.get(email__iexact=email)
         # Invalidate any existing unused tokens for this user
         PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
-        send_password_reset_email(user)
+        email_sent = send_password_reset_email(user)
+        if not email_sent:
+            logger.error("Email de recuperação não enviado para %s", user.email)
         return Response(
-            {"message": "Email de recuperação de senha enviado."},
+            {"message": "Se o email existir, um link de recuperação será enviado."},
             status=status.HTTP_200_OK,
         )
     except User.DoesNotExist:

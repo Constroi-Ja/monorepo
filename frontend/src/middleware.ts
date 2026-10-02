@@ -11,7 +11,8 @@ export function middleware(request: NextRequest) {
     publicRoutes.includes(pathname) || 
     pathname.startsWith("/register/") ||
     pathname.startsWith("/forgot-password") ||
-    pathname.startsWith("/confirm-email");
+    pathname.startsWith("/confirm-email") ||
+    pathname.startsWith("/reset-password");
 
   // If user is not authenticated and trying to access protected route
   if (!token && !isPublicRoute) {

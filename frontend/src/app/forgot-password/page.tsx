@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { apiClient } from "@/lib/api-client";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -18,13 +19,12 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      // TODO: Implementar chamada à API
-      // await apiClient.post("/auth/password-reset/", { email });
-      
-      // Simular delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Redirecionar para página de confirmação
+      const response = await apiClient.post("/auth/password-reset/", { email });
+      if (response.error) {
+        setError(response.error.message);
+        return;
+      }
+
       router.push(`/forgot-password/confirm?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao enviar email");

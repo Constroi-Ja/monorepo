@@ -31,6 +31,20 @@ export const formatPhone = (value: string): string => {
   return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
 };
 
+export const formatTimeInput = (value: string): string => {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+};
+
+export const normalizeTime = (value: string | null | undefined): string => {
+  if (!value) return "";
+  return formatTimeInput(value);
+};
+
+export const isValidTime = (value: string): boolean =>
+  /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+
 export const formatDate = (value: string): string => {
   const numbers = value.replace(/\D/g, "");
   if (numbers.length <= 2) return numbers;
