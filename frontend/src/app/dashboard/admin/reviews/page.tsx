@@ -92,7 +92,7 @@ export default function AdminReviewsPage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+              className="border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
             >
               <option value="">Todos</option>
               <option value="provider">Prestadores</option>

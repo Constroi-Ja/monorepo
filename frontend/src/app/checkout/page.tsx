@@ -395,7 +395,7 @@ export default function CheckoutPage() {
                     placeholder={placeholder}
                     value={(payer as any)[key]}
                     onChange={(e) => setPayer((prev) => ({ ...prev, [key]: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                   />
                 </div>
               ))}

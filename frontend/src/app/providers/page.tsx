@@ -225,7 +225,7 @@ function ProvidersPageContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome ou especialidade..."
-              className="w-full md:max-w-md pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 shadow-sm"
+              className="w-full md:max-w-md pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 bg-gray-50 text-gray-900 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white shadow-sm"
             />
           </div>
 
@@ -325,7 +325,7 @@ function ProvidersPageContent() {
                     <input
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                      className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                     />
                   </div>
                   <div>
@@ -335,7 +335,7 @@ function ProvidersPageContent() {
                       onChange={(e) => setNotes(e.target.value)}
                       rows={2}
                       placeholder="Descreva o problema ou serviço necessário..."
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 resize-none"
+                      className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white resize-none"
                     />
                   </div>
 
@@ -356,7 +356,7 @@ function ProvidersPageContent() {
                             placeholder={placeholder}
                             value={(payer as unknown as Record<string, string>)[key]}
                             onChange={(e) => setPayer((prev) => ({ ...prev, [key]: e.target.value }))}
-                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                            className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                           />
                         </div>
                       ))}

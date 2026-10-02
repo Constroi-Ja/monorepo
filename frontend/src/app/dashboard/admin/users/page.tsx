@@ -92,7 +92,7 @@ export default function AdminUsersPage() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6 flex flex-col sm:flex-row gap-3">
             <form onSubmit={handleSearch} className="flex gap-2 flex-1">
               <input
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-orange-400"
+                className="flex-1 border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-4 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                 placeholder="Buscar por email ou nome..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -104,7 +104,7 @@ export default function AdminUsersPage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+              className="border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
             >
               <option value="">Todos os tipos</option>
               <option value="consumer">Consumidores</option>

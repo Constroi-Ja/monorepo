@@ -369,7 +369,7 @@ export default function CompanyInventoryPage() {
                   <input
                     value={form.name}
                     onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                     placeholder="Ex: Cimento, Areia, Tinta..."
                   />
                 </div>
@@ -379,7 +379,7 @@ export default function CompanyInventoryPage() {
                   <input
                     value={form.category}
                     onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                     placeholder="Ex: Alvenaria"
                   />
                 </div>
@@ -389,7 +389,7 @@ export default function CompanyInventoryPage() {
                   <select
                     value={form.unit}
                     onChange={(e) => setForm((p) => ({ ...p, unit: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                   >
                     {UNIT_CHOICES.map(({ value, label }) => (
                       <option key={value} value={value}>
@@ -407,7 +407,7 @@ export default function CompanyInventoryPage() {
                     step="0.01"
                     value={form.quantity}
                     onChange={(e) => setForm((p) => ({ ...p, quantity: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                   />
                 </div>
 
@@ -421,7 +421,7 @@ export default function CompanyInventoryPage() {
                     step="0.01"
                     value={form.min_quantity}
                     onChange={(e) => setForm((p) => ({ ...p, min_quantity: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                     placeholder="Opcional"
                   />
                 </div>
@@ -436,7 +436,7 @@ export default function CompanyInventoryPage() {
                     step="0.01"
                     value={form.purchase_price}
                     onChange={(e) => setForm((p) => ({ ...p, purchase_price: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                     placeholder="Opcional"
                   />
                 </div>
@@ -447,7 +447,7 @@ export default function CompanyInventoryPage() {
                     value={form.notes}
                     onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                     rows={2}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 resize-none"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white resize-none"
                     placeholder="Observações internas..."
                   />
                 </div>

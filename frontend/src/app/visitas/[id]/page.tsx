@@ -301,7 +301,7 @@ export default function VisitDetailPage() {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                   placeholder="Digite uma mensagem..."
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                  className="flex-1 border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
                 />
                 <button
                   onClick={sendMessage}
@@ -367,7 +367,7 @@ export default function VisitDetailPage() {
                     onChange={(e) => setRatingComment(e.target.value)}
                     placeholder="Comentário opcional..."
                     rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 resize-none"
+                    className="w-full border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm placeholder-gray-500 outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white resize-none"
                   />
                   <div className="flex gap-2">
                     <button

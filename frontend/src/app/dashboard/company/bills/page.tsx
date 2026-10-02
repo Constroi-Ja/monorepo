@@ -344,7 +344,7 @@ export default function BillsPage() {
               onChange={(e) =>
                 setCategoryFilter(e.target.value as CategoryFilter)
               }
-              className="border border-gray-200 bg-white text-sm text-gray-700 rounded-xl px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              className="border border-gray-300 bg-gray-50 text-sm text-gray-900 rounded-xl px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
             >
               <option value="todas">Todas as categorias</option>
               <option value="aluguel">Aluguel</option>
@@ -563,7 +563,7 @@ export default function BillsPage() {
                     setFormData((f) => ({ ...f, description: e.target.value }))
                   }
                   placeholder="Ex: Aluguel do galpão"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
                 />
               </div>
 
@@ -580,7 +580,7 @@ export default function BillsPage() {
                     setFormData((f) => ({ ...f, amount: e.target.value }))
                   }
                   placeholder="0,00"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
                 />
               </div>
 
@@ -594,7 +594,7 @@ export default function BillsPage() {
                   onChange={(e) =>
                     setFormData((f) => ({ ...f, due_date: e.target.value }))
                   }
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
                 />
               </div>
 
@@ -610,7 +610,7 @@ export default function BillsPage() {
                       category: e.target.value as Bill["category"],
                     }))
                   }
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  className="w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent"
                 >
                   <option value="aluguel">Aluguel</option>
                   <option value="fornecedor">Fornecedor</option>

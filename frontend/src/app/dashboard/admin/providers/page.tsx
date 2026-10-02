@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { apiClient } from "@/lib/api-client";
+import { fixCloudinaryPdfUrl } from "@/utils";
 
 interface AdminProvider {
   id: number;
@@ -37,7 +38,7 @@ function AdminProvidersPageContent() {
     if (!authLoading && (!isAuthenticated || user?.user_type !== "admin")) router.push("/dashboard");
   }, [authLoading, isAuthenticated, user, router]);
 
-  const fetchProviders = async () => {
+  const fetchProviders = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -47,11 +48,11 @@ function AdminProvidersPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [verifiedFilter]);
 
   useEffect(() => {
     if (isAuthenticated && user?.user_type === "admin") fetchProviders();
-  }, [isAuthenticated, user, verifiedFilter]);
+  }, [isAuthenticated, user, verifiedFilter, fetchProviders]);
 
   const handleVerify = async (provider: AdminProvider, verified: boolean) => {
     try {
@@ -87,7 +88,7 @@ function AdminProvidersPageContent() {
             <select
               value={verifiedFilter}
               onChange={(e) => setVerifiedFilter(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+              className="border border-gray-300 bg-gray-50 text-gray-900 rounded-xl px-3 py-2 text-sm outline-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white"
             >
               <option value="">Todos</option>
               <option value="true">Verificados</option>
@@ -207,7 +208,7 @@ function AdminProvidersPageContent() {
                 <p className="text-xs text-gray-400 mb-2">Antecedentes Criminais</p>
                 {selected.criminal_record_url ? (
                   <a
-                    href={selected.criminal_record_url}
+                    href={fixCloudinaryPdfUrl(selected.criminal_record_url) || ""}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-orange-500 font-medium hover:text-orange-600 transition-colors text-sm"

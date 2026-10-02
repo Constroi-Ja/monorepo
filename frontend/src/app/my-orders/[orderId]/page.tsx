@@ -125,7 +125,7 @@ function ReviewModal({
           onChange={(e) => setComment(e.target.value)}
           placeholder="Conte como foi... (opcional)"
           rows={3}
-          className="mt-4 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
+          className="mt-4 w-full border border-gray-300 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent resize-none"
         />
 
         <div className="mt-5 flex flex-col gap-2">
@@ -464,7 +464,7 @@ export default function OrderDetailPage({
                       onChange={(e) => setMessageText(e.target.value)}
                       onKeyDown={handleInputKeyDown}
                       placeholder="Digite uma mensagem…"
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 bg-gray-50 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white focus:border-transparent transition-all"
                     />
                     <button
                       onClick={handleSendMessage}
