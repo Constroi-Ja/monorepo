@@ -22,7 +22,6 @@ function ConsumerDashboardPageContent() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState("");
   const [featuredStores, setFeaturedStores] = useState<Store[]>([]);
   const [nearbyProviders, setNearbyProviders] = useState<Provider[]>([]);
   const [consumerOrders, setConsumerOrders] = useState<ConsumerOrder[]>([]);
@@ -81,13 +80,6 @@ function ConsumerDashboardPageContent() {
     }
     if (visitsRes.status === "fulfilled" && visitsRes.value.data) {
       setConsumerVisits(Array.isArray(visitsRes.value.data) ? visitsRes.value.data : []);
-    }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 
