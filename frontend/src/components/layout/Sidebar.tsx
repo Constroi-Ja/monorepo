@@ -176,7 +176,7 @@ export function Sidebar({ userName, userInitial, userPhoto }: SidebarProps) {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth <= 1024);
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -214,21 +214,15 @@ export function Sidebar({ userName, userInitial, userPhoto }: SidebarProps) {
   return (
     <>
       {/* Mobile toggle button */}
-      {isMobile && (
+      {isMobile && !isMobileMenuOpen && (
         <button
           onClick={() => setIsMobileMenuOpen((prev) => !prev)}
           className="fixed top-4 left-4 z-50 w-10 h-10 bg-gray-800 text-white rounded-lg flex items-center justify-center shadow-lg"
-          aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-label="Abrir menu"
         >
-          {isMobileMenuOpen ? (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          )}
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </button>
       )}
 
@@ -244,17 +238,31 @@ export function Sidebar({ userName, userInitial, userPhoto }: SidebarProps) {
       {/* Sidebar panel */}
       <aside
         className={[
-          "bg-gray-900 flex flex-col transition-all duration-300 relative z-40",
-          isMobile
-            ? `fixed top-0 left-0 w-64 h-full shadow-2xl transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`
-            : `sticky top-0 h-screen ${isCollapsed ? "w-16" : "w-60"}`,
+          "fixed top-0 left-0 z-40 flex h-full w-64 flex-col overflow-visible bg-gray-900 shadow-2xl transition-all duration-300 transform",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+          "lg:sticky lg:h-screen lg:translate-x-0 lg:shadow-none",
+          isCollapsed ? "lg:w-16" : "lg:w-60",
         ].join(" ")}
       >
+        {isMobile && (
+          <div className="flex justify-end px-4 pt-4">
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-10 h-10 bg-gray-800 text-white rounded-lg flex items-center justify-center shadow-lg"
+              aria-label="Fechar menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Desktop collapse button */}
         {!isMobile && (
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="absolute -right-3 top-7 w-6 h-6 bg-gray-700 hover:bg-orange-500 rounded-full flex items-center justify-center z-10 border-2 border-gray-900 transition-colors shadow"
+            className="absolute -right-3 top-7 w-7 h-7 bg-gray-800 hover:bg-orange-500 rounded-full flex items-center justify-center z-10 border-2 border-gray-900 transition-colors shadow-md"
             aria-label={isCollapsed ? "Expandir menu" : "Colapsar menu"}
           >
             <svg

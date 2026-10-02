@@ -233,7 +233,7 @@ export default function BillsPage() {
         userPhoto={(user as any).profile_photo_url}
       />
 
-      <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
+      <div className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 min-w-0">
         <div className="max-w-4xl mx-auto">
           <Breadcrumb
             items={[

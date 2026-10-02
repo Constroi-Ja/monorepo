@@ -126,7 +126,7 @@ function ConsumerDashboardPageContent() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar userName={fullName} userInitial={fullName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
-      <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
+      <div className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 min-w-0">
         <div className="max-w-7xl mx-auto">
           <Breadcrumb items={[{ label: "Painel" }]} />
           {/* Header */}
@@ -136,7 +136,7 @@ function ConsumerDashboardPageContent() {
           </div>
 
           {/* Main Categories */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <button
               onClick={() => router.push("/materials")}
               className="group relative rounded-2xl p-5 text-left transition-all hover:shadow-md bg-gray-900 hover:bg-gray-800"
