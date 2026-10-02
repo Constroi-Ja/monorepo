@@ -66,7 +66,7 @@ export default function AdminDashboard() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar userName="Admin" userInitial="A" />
 
-      <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
+      <main className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 min-w-0">
         <div className="max-w-6xl mx-auto">
           <Breadcrumb items={[{ label: "Admin" }]} />
 

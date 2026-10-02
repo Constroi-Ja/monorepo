@@ -127,7 +127,7 @@ export default function CompanyDashboardPage() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
 
-      <div className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
+      <div className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 min-w-0">
         <div className="max-w-6xl mx-auto">
           <Breadcrumb items={[{ label: "Painel" }]} />
 

@@ -91,7 +91,7 @@ export default function MyOrdersPage() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar userName={userName} userInitial={userInitial} userPhoto={(user as any).profile_photo_url} />
 
-      <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
+      <main className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 min-w-0">
         <div className="max-w-4xl mx-auto">
           <Breadcrumb
             items={[

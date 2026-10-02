@@ -146,7 +146,7 @@ export default function CheckoutPage() {
       return (
         <div className="flex min-h-screen bg-gray-50">
           <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
-          <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 flex items-center justify-center">
+          <main className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 flex items-center justify-center">
             <div className="max-w-md w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
                 <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +179,7 @@ export default function CheckoutPage() {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
-        <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 flex items-center justify-center">
+        <main className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 flex items-center justify-center">
           <div className="max-w-md w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,7 +243,7 @@ export default function CheckoutPage() {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} userPhoto={(user as any).profile_photo_url} />
-        <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
+        <main className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 min-w-0">
           <div className="max-w-xl mx-auto">
             <Breadcrumb items={[{ label: "Painel", href: "/dashboard" }, { label: "Carrinho", href: "/cart" }, { label: "Checkout" }]} />
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Revisar Pedido</h1>
@@ -337,7 +337,7 @@ export default function CheckoutPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar userName={userName} userInitial={userName?.charAt(0).toUpperCase()} />
-      <main className="flex-1 p-4 md:p-8 mt-16 md:mt-0 min-w-0">
+      <main className="flex-1 p-4 md:p-8 mt-16 lg:mt-0 min-w-0">
         <div className="max-w-xl mx-auto">
           <Breadcrumb items={[{ label: "Painel", href: "/dashboard" }, { label: "Carrinho", href: "/cart" }, { label: "Checkout" }]} />
           <h1 className="text-2xl font-bold text-gray-900 mb-6">Pagamento</h1>
