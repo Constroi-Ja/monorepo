@@ -36,12 +36,12 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-left focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 text-left focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white"
         >
           {selected.length > 0 ? (
             <span className="text-gray-700">{selected.length} selecionadas</span>
           ) : (
-            <span className="text-gray-400">{placeholder}</span>
+            <span className="text-gray-500">{placeholder}</span>
           )}
         </button>
         {isOpen && (
